@@ -1,0 +1,155 @@
+/* ══════════════════════════════════════════════════
+   Animations — GSAP Classes & CSS Keyframes
+   ══════════════════════════════════════════════════ */
+
+/* ── GSAP Animation Targets ─────────────────────── */
+
+/* Character reveal — headings split into chars by GSAP */
+.char-reveal {
+    opacity: 0;
+}
+
+.char-reveal.is-animated {
+    opacity: 1;
+}
+
+.char-reveal .char {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(40px);
+}
+
+/* SVG stroke drawing */
+.svg-draw path,
+.svg-draw line,
+.svg-draw circle,
+.svg-draw polyline {
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+}
+
+.svg-draw.is-animated path,
+.svg-draw.is-animated line,
+.svg-draw.is-animated circle,
+.svg-draw.is-animated polyline {
+    stroke-dashoffset: 0;
+}
+
+/* Fade in up */
+.fade-in-up {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.fade-in-up.is-animated {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Fade in left */
+.fade-in-left {
+    opacity: 0;
+    transform: translateX(-30px);
+}
+
+.fade-in-left.is-animated {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* Fade in right */
+.fade-in-right {
+    opacity: 0;
+    transform: translateX(30px);
+}
+
+.fade-in-right.is-animated {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* Scale in */
+.scale-in {
+    opacity: 0;
+    transform: scale(0.9);
+}
+
+.scale-in.is-animated {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* ── Stagger Children ───────────────────────────── */
+.stagger-children > * {
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+.stagger-children.is-animated > * {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ── CSS-Only Animations ────────────────────────── */
+
+/* Subtle float */
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+    animation: float 4s ease-in-out infinite;
+}
+
+/* Pulse */
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.animate-pulse {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/* Shimmer */
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.animate-shimmer {
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.1) 50%,
+        transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 3s ease-in-out infinite;
+}
+
+/* ── Reduced Motion ─────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .char-reveal,
+    .fade-in-up,
+    .fade-in-left,
+    .fade-in-right,
+    .scale-in,
+    .stagger-children > * {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+
+    .animate-float,
+    .animate-pulse,
+    .animate-shimmer {
+        animation: none;
+    }
+
+    .feature-strip__inner {
+        animation: none;
+    }
+}

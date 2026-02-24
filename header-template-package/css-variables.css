@@ -1,0 +1,39 @@
+/*
+ * Required CSS Custom Properties for the Header Template
+ *
+ * Add this :root block to ONE of these locations:
+ *   - Divi → Theme Options → General → Custom CSS (recommended)
+ *   - Your child theme's style.css (after the theme comment header)
+ *   - A separate enqueued stylesheet
+ *
+ * Customize the color values to match your brand.
+ */
+
+:root {
+  /* Layout */
+  --nav-height: 70px;
+
+  /* Brand — Dark Greens */
+  --dark: #153b37;
+  --dark-mid: #1a4a45;
+  --dark-transparent: rgba(21, 59, 55, 0.6);
+  --mid: #2a635c;
+  --light: #3e857c;
+  --lightest: #4a9e94;
+
+  /* Brand — Warm Accent (peach/coral) */
+  --accent: #e8a087;
+  --accent-light: #f2c4b3;
+  --accent-glow: rgba(232, 160, 135, 0.4);
+
+  /* Neutrals */
+  --white: #ffffff;
+  --off-white: #f8fafa;
+  --gray-light: #e8eeee;
+
+  /* Text Colors */
+  --text-dark: #1a2e2b;
+  --text-muted-dark: #4a5f5c;
+  --text-light: #d4e5e2;
+  --text-muted-light: rgba(212, 229, 226, 0.6);
+}

@@ -1,0 +1,60 @@
+/* ══════════════════════════════════════════════════
+   Design Tokens — Gunnerson Dental
+   ══════════════════════════════════════════════════ */
+
+:root {
+    /* ── Layout ─────────────────────────────────── */
+    --nav-height: 66px;
+    --max-width: 1440px;
+    --content-width: 1200px;
+    --side-padding: clamp(20px, 5vw, 80px);
+
+    /* ── Colors ─────────────────────────────────── */
+    --theme-white: #f1f0ef;
+    --theme-main: #05afb5;
+    --theme-main-dark: #049ba0;
+    --theme-main-light: #b9ebed;
+    --theme-accent: #ffa500;
+    --theme-dark: #001c33;
+    --near-black: #121212;
+    --white: #ffffff;
+    --off-white: #f8f8f7;
+    --gray-100: #f1f0ef;
+    --gray-200: #e5e4e2;
+    --gray-300: #d1d0ce;
+    --gray-500: #8a8986;
+    --gray-700: #5c5b59;
+    --footer-bg: #222222;
+    --footer-text: #cccccc;
+
+    /* ── Typography ─────────────────────────────── */
+    --font-body: "Plus Jakarta Sans", sans-serif;
+    --font-display: "stolzl", sans-serif;
+    --font-accent: "Nanum Myeongjo", serif;
+
+    --text-dark: #101316;
+    --text-muted: #5c676e;
+    --text-light: #ffffff;
+    --nav-link-color: rgba(0, 0, 0, 0.6);
+
+    /* ── Buttons ────────────────────────────────── */
+    --btn-radius: 99px;
+    --btn-transition: cubic-bezier(0.77, 0, 0.175, 1);
+    --btn-duration: 0.5s;
+
+    /* ── Shadows ────────────────────────────────── */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.12);
+    --shadow-header: 0 2px 30px rgba(0, 0, 0, 0.08);
+
+    /* ── Transitions ────────────────────────────── */
+    --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --ease-smooth: cubic-bezier(0.77, 0, 0.175, 1);
+
+    /* ── Z-Index Scale ──────────────────────────── */
+    --z-header: 1000;
+    --z-overlay: 999;
+    --z-modal: 1100;
+    --z-dropdown: 100;
+}

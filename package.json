@@ -1,0 +1,59 @@
+{
+  "name": "wp-client-hub",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently --kill-others \"next dev --turbopack -p 3002\" \"tsx --watch server/ws-server.ts\"",
+    "build": "next build",
+    "start": "concurrently --kill-others \"next start\" \"tsx server/ws-server.ts\"",
+    "seed": "tsx scripts/seed-db.ts",
+    "seo:setup": "tsx scripts/setup-seo-db.ts",
+    "postinstall": "chmod +x node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper 2>/dev/null || true"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joelhmartin/wp-client-hub.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/joelhmartin/wp-client-hub/issues"
+  },
+  "homepage": "https://github.com/joelhmartin/wp-client-hub#readme",
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/addon-web-links": "^0.12.0",
+    "@xterm/xterm": "^6.0.0",
+    "better-sqlite3": "^12.6.2",
+    "dotenv": "^17.2.4",
+    "next": "^16.1.6",
+    "node-pty": "^1.1.0",
+    "papaparse": "^5.5.3",
+    "pg": "^8.18.0",
+    "postcss": "^8.5.6",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "tailwindcss": "^4.1.18",
+    "uuid": "^13.0.0",
+    "ws": "^8.19.0",
+    "zustand": "^5.0.11"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^25.2.3",
+    "@types/papaparse": "^5.5.2",
+    "@types/pg": "^8.16.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.18.1",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.2",
+    "eslint-config-next": "^16.1.6",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

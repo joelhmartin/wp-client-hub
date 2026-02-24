@@ -1,0 +1,129 @@
+/* ══════════════════════════════════════════════════
+   Base — Reset, Typography, Body Defaults
+   ══════════════════════════════════════════════════ */
+
+/* ── Reset ──────────────────────────────────────── */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--text-dark);
+    background-color: var(--theme-white);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+}
+
+/* Account for fixed header */
+body {
+    padding-top: var(--nav-height);
+}
+
+/* ── Typography ─────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    line-height: 1.15;
+    color: var(--theme-dark);
+    letter-spacing: -0.02em;
+}
+
+h1 {
+    font-size: clamp(35px, 6vw, 80px);
+}
+
+h2 {
+    font-size: clamp(28px, 4vw, 55px);
+}
+
+h3 {
+    font-size: clamp(22px, 3vw, 36px);
+}
+
+h4 {
+    font-size: clamp(18px, 2.5vw, 26px);
+}
+
+h5 {
+    font-size: clamp(16px, 2vw, 20px);
+}
+
+h6 {
+    font-size: clamp(14px, 1.5vw, 18px);
+}
+
+p {
+    margin-bottom: 1rem;
+    color: var(--text-muted);
+    line-height: 1.8;
+}
+
+a {
+    color: var(--theme-main);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: var(--theme-main-dark);
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+ul, ol {
+    list-style: none;
+}
+
+/* ── Section Overline ───────────────────────────── */
+.overline {
+    font-family: var(--font-body);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--theme-main);
+    margin-bottom: 0.75rem;
+    display: block;
+}
+
+/* ── Accent Font ────────────────────────────────── */
+.font-accent {
+    font-family: var(--font-accent);
+    font-style: italic;
+}
+
+/* ── Selection ──────────────────────────────────── */
+::selection {
+    background: var(--theme-main-light);
+    color: var(--theme-dark);
+}
+
+/* ── Screen Reader Only ─────────────────────────── */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
