@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { listAllSites, getEnvironmentDetail, getSSHPassword } from '@/lib/kinsta-api';
+import { listAllSites, getSSHPassword } from '@/lib/kinsta-api';
 import { getExistingSiteIds, upsertSite, upsertEnvironment, setEnvironmentPassword, getEnvironmentsMissingPasswords } from '@/lib/db/sites';
 import { encryptPassword } from '@/lib/db';
 
@@ -29,28 +29,30 @@ export async function POST() {
       for (const env of site.environments || []) {
         if (isNew) newEnvCount++;
 
-        // Fetch full environment details
-        try {
-          const detail = await getEnvironmentDetail(env.id);
-          const isLive = (env.display_name || env.name || '').toLowerCase() === 'live' ? 1 : 0;
+        const isLive = (env.display_name || env.name || '').toLowerCase() === 'live' ? 1 : 0;
 
-          upsertEnvironment({
-            id: env.id,
-            site_id: site.id,
-            environment_name: env.display_name || env.name,
-            primary_domain: detail.primary_domain?.name || null,
-            ssh_host: detail.ssh_connection?.ssh_ip?.external_ip || '',
-            ssh_ip: detail.ssh_connection?.ssh_ip?.external_ip || '',
-            ssh_port: detail.ssh_connection?.ssh_port || 0,
-            ssh_username: detail.container_info?.ssh_username || '',
-            ssh_command: detail.ssh_connection && detail.container_info
-              ? `ssh ${detail.container_info.ssh_username}@${detail.ssh_connection.ssh_ip.external_ip} -p ${detail.ssh_connection.ssh_port}`
-              : '',
-            is_live: isLive,
-          });
-        } catch (err) {
-          console.error(`Failed to fetch env detail for ${env.id}:`, err);
-        }
+        // With include_environments=true, the list response has SSH connection
+        // info inline. ssh_username is not in the list response but always
+        // matches site.name on Kinsta (confirmed across all 116 sites).
+        const sshHost = env.ssh_connection?.ssh_ip?.external_ip || '';
+        const sshPort = Number(env.ssh_connection?.ssh_port) || 0;
+        const sshUsername = site.name || '';
+        const primaryDomain = env.primaryDomain?.name || null;
+
+        upsertEnvironment({
+          id: env.id,
+          site_id: site.id,
+          environment_name: env.display_name || env.name,
+          primary_domain: primaryDomain,
+          ssh_host: sshHost,
+          ssh_ip: sshHost,
+          ssh_port: sshPort,
+          ssh_username: sshUsername,
+          ssh_command: sshHost && sshUsername
+            ? `ssh ${sshUsername}@${sshHost} -p ${sshPort}`
+            : '',
+          is_live: isLive,
+        });
       }
     }
 

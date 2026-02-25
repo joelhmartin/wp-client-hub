@@ -9,16 +9,28 @@ function getHeaders(): Record<string, string> {
   };
 }
 
+export interface KinstaListEnvironment {
+  id: string;
+  name: string;
+  display_name: string;
+  is_premium: boolean;
+  primaryDomain?: { name: string };
+  ssh_connection?: {
+    ssh_ip: { external_ip: string };
+    ssh_port: number | string;
+  };
+  container_info?: {
+    id?: string;
+    ssh_username?: string;
+    php_engine_version?: string;
+  };
+}
+
 export interface KinstaListSite {
   id: string;
   name: string;
   display_name: string;
-  environments: {
-    id: string;
-    name: string;
-    display_name: string;
-    is_premium: boolean;
-  }[];
+  environments: KinstaListEnvironment[];
 }
 
 export async function listAllSites(): Promise<KinstaListSite[]> {
