@@ -26,7 +26,7 @@ export async function listAllSites(): Promise<KinstaListSite[]> {
   if (!agencyId) throw new Error('KINSTA_AGENCY_ID not set');
 
   const res = await fetch(
-    `${KINSTA_API_BASE}/sites?company=${agencyId}`,
+    `${KINSTA_API_BASE}/sites?company=${agencyId}&include_environments=true`,
     { headers: getHeaders() }
   );
 
