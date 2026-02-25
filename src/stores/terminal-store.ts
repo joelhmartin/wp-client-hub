@@ -16,6 +16,7 @@ export interface SiteTabGroup {
   envId: string;
   siteName: string;
   envName: string;
+  primaryDomain: string | null;
   claudeSessionId: string | null;
   sshSessionId: string | null;
   activeSubTab: 'claude' | 'ssh' | 'claude-md' | 'seo';

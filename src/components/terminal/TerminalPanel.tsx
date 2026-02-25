@@ -70,6 +70,18 @@ export function TerminalPanel() {
           >
             <span className="truncate max-w-40">{group.siteName}</span>
             <span className="text-xs text-text-muted">({group.envName})</span>
+            {group.primaryDomain && (
+              <a
+                href={`https://${group.primaryDomain}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-text-muted hover:text-accent flex-shrink-0 text-sm transition-colors"
+                title={`Visit ${group.primaryDomain}`}
+              >
+                ↗
+              </a>
+            )}
             <PushEnvironmentMenu siteId={group.siteId} siteName={group.siteName} />
             <button
               onClick={(e) => {

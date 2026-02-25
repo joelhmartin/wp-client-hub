@@ -21,8 +21,8 @@ export function Sidebar() {
     return sites.filter((s) => s.site_name.toLowerCase().includes(q));
   }, [sites, search]);
 
-  const handleSelect = (site: SiteListItem, envId: string, envName: string) => {
-    connectToSite(site.id, envId, site.site_name, envName);
+  const handleSelect = (site: SiteListItem, envId: string, envName: string, primaryDomain?: string | null) => {
+    connectToSite(site.id, envId, site.site_name, envName, primaryDomain);
   };
 
   const handlePullNew = async () => {

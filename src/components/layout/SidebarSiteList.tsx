@@ -6,7 +6,7 @@ import { useTerminalStore } from '@/stores/terminal-store';
 
 interface SidebarSiteListProps {
   sites: SiteListItem[];
-  onSelect: (site: SiteListItem, envId: string, envName: string) => void;
+  onSelect: (site: SiteListItem, envId: string, envName: string, primaryDomain?: string | null) => void;
 }
 
 export function SidebarSiteList({ sites, onSelect }: SidebarSiteListProps) {

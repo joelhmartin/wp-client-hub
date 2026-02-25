@@ -23,7 +23,7 @@ export interface Environment {
 export interface SiteListItem {
   id: string;
   site_name: string;
-  environments: Pick<Environment, 'id' | 'environment_name' | 'is_live'>[];
+  environments: Pick<Environment, 'id' | 'environment_name' | 'is_live' | 'primary_domain'>[];
 }
 
 export interface TerminalSession {

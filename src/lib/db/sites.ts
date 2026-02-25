@@ -6,13 +6,13 @@ export function getAllSites(): SiteListItem[] {
   const sites = db.prepare('SELECT id, site_name FROM sites ORDER BY site_name').all() as { id: string; site_name: string }[];
 
   const envStmt = db.prepare(
-    'SELECT id, environment_name, is_live FROM environments WHERE site_id = ? ORDER BY is_live DESC, environment_name'
+    'SELECT id, environment_name, is_live, primary_domain FROM environments WHERE site_id = ? ORDER BY is_live DESC, environment_name'
   );
 
   return sites.map((site) => ({
     id: site.id,
     site_name: site.site_name,
-    environments: envStmt.all(site.id) as Pick<Environment, 'id' | 'environment_name' | 'is_live'>[],
+    environments: envStmt.all(site.id) as Pick<Environment, 'id' | 'environment_name' | 'is_live' | 'primary_domain'>[],
   }));
 }
 

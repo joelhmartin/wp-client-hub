@@ -7,12 +7,13 @@ export function useTerminal() {
   const { addTabGroup } = useTerminalStore();
 
   const connectToSite = useCallback(
-    (siteId: string, envId: string, siteName: string, envName: string) => {
+    (siteId: string, envId: string, siteName: string, envName: string, primaryDomain?: string | null) => {
       addTabGroup({
         siteId,
         envId,
         siteName,
         envName,
+        primaryDomain: primaryDomain || null,
         claudeSessionId: null,
         sshSessionId: null,
       });

@@ -5,7 +5,7 @@ import type { SiteListItem } from '@/lib/types';
 interface SidebarSiteItemProps {
   site: SiteListItem;
   isActive: boolean;
-  onSelect: (site: SiteListItem, envId: string, envName: string) => void;
+  onSelect: (site: SiteListItem, envId: string, envName: string, primaryDomain?: string | null) => void;
 }
 
 export function SidebarSiteItem({ site, isActive, onSelect }: SidebarSiteItemProps) {
@@ -15,7 +15,7 @@ export function SidebarSiteItem({ site, isActive, onSelect }: SidebarSiteItemPro
   const handleClick = () => {
     if (hasMultipleEnvs) return; // handled by env buttons
     const env = liveEnv || site.environments[0];
-    if (env) onSelect(site, env.id, env.environment_name);
+    if (env) onSelect(site, env.id, env.environment_name, env.primary_domain);
   };
 
   return (
@@ -38,7 +38,7 @@ export function SidebarSiteItem({ site, isActive, onSelect }: SidebarSiteItemPro
           {site.environments.map((env) => (
             <button
               key={env.id}
-              onClick={() => onSelect(site, env.id, env.environment_name)}
+              onClick={() => onSelect(site, env.id, env.environment_name, env.primary_domain)}
               className={`text-xs px-1.5 py-0.5 rounded ${
                 env.is_live
                   ? 'bg-success/20 text-success hover:bg-success/30'
