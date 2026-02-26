@@ -115,6 +115,35 @@ Rules:
 5. If `## Agent Notes` doesn't exist, create it at the end of the file.
 6. Do NOT modify sections marked with `<!-- AUTO-SCAN -->` — those are managed by the automated scanner.
 
+### Updating Agent Knowledge (Divi Expert)
+
+When any agent encounters Divi-related architectural patterns, gotchas, workarounds, or friction during a session — even if the agent is not the Divi expert — it should append that knowledge to `DIVI-EXPERT.md` so future sessions benefit from it.
+
+**What to capture:**
+- Divi version-specific quirks discovered on a site (e.g., PHP compatibility issues, shortcode wrapping behavior, JS loading order problems)
+- Plugin interactions that affect Divi rendering (e.g., caching plugins breaking Visual Builder, SEO plugins conflicting with Divi's schema output)
+- Theme Builder template assignment patterns that weren't obvious (e.g., custom headers via PHP hooks instead of Theme Builder)
+- Child theme override patterns that solved a problem
+- WP-CLI commands or techniques that worked for Divi content manipulation after standard approaches failed
+- CSS selector discoveries for targeting specific Divi elements that aren't documented
+- Performance bottlenecks tied to specific Divi configurations
+
+**How to update:**
+1. Read the current `DIVI-EXPERT.md` first — search for whether the topic already exists
+2. If the topic exists, append your finding as a sub-bullet or expand the existing section
+3. If the topic is new, append under a `## Discovered Patterns` section at the end of the file:
+   ```
+   ### YYYY-MM-DD: Brief Title
+   - **Context**: What site/scenario this was discovered in
+   - **Issue**: What the friction point or discovery was
+   - **Solution/Pattern**: How it was resolved or what the pattern is
+   - **Affected versions**: Divi 4 / Divi 5 / both
+   ```
+4. If `## Discovered Patterns` doesn't exist yet, create it before the Appendix sections
+5. Keep entries concise but specific — include version numbers, function names, and exact WP-CLI commands when relevant
+
+**All three agents** (Security, SEO, Divi) should contribute to this knowledge base when they encounter Divi-related findings. The Divi expert prompt is the shared knowledge repository for Divi architecture across the entire agency portfolio.
+
 ---
 
 ## Agent Summaries

@@ -26,6 +26,10 @@ Always reference and follow the global rules in `CLAUDE.md`.
 14. Custom module development (PHP + React/JSX for both Divi 4 and Divi 5)
 15. Divi 5 Loop Builder and dynamic content
 16. Divi 5 Canvases, Interactions, and Semantic Elements
+17. Divi 5 Flexbox and CSS Grid layout systems
+18. Divi 5 Advanced Units, Relative Colors & HSL
+19. Divi 5 new modules: Group Carousel, Lottie, Icon List
+20. Divi 5 workflow tools: Style Inspector, Attribute Management, Command Center
 
 ---
 
@@ -982,7 +986,36 @@ echo "Created page ID: $post_id\n";
 '
 ```
 
-### 2.12 Divi 5 Group Module (New)
+### 2.12 Nesting in Divi 5 — Modules, Rows, and Groups
+
+Divi 5 removes the strict 4-level hierarchy of Divi 4 (Section → Row → Column → Module). Now any element can be a container:
+
+- **Nested Modules**: You can place one module inside another. Tabs, sliders, accordions, and buttons can all contain child modules. Every element gets full flex and grid controls, so you can design complex layouts without custom code.
+- **Nested Rows**: You can add rows inside rows. Inside any column, a row tab lets you pick from Divi's premade row templates. Rows sit alongside modules and nest as deeply as needed.
+- **Groups**: A dedicated container module for grouping modules into a single manageable unit (see below).
+
+The Divi 5 UI supports right-click controls, sortable lists, and improved drag-and-drop for managing deeply nested content. Use the **Content Drill Down** feature (see Part Three: Workflow Tools) to navigate complex nesting without hunting for elements.
+
+**Nested Row Example:**
+```html
+<!-- wp:divi/section {"attrs":{"admin_label":"Nested Row Demo"}} -->
+  <!-- wp:divi/row {"attrs":{"column_structure":"4_4"}} -->
+    <!-- wp:divi/column {"attrs":{"type":"4_4"}} -->
+      <!-- wp:divi/text {"attrs":{"content":"<h2>Above the nested row</h2>"}} /-->
+      <!-- wp:divi/row {"attrs":{"column_structure":"1_2,1_2","admin_label":"Inner Row"}} -->
+        <!-- wp:divi/column {"attrs":{"type":"1_2"}} -->
+          <!-- wp:divi/text {"attrs":{"content":"<p>Left inner column</p>"}} /-->
+        <!-- /wp:divi/column -->
+        <!-- wp:divi/column {"attrs":{"type":"1_2"}} -->
+          <!-- wp:divi/text {"attrs":{"content":"<p>Right inner column</p>"}} /-->
+        <!-- /wp:divi/column -->
+      <!-- /wp:divi/row -->
+    <!-- /wp:divi/column -->
+  <!-- /wp:divi/row -->
+<!-- /wp:divi/section -->
+```
+
+#### 2.12a Group Module
 
 The Group module is new to Divi 5 and enables infinite nesting. Groups act as generic containers that can hold any modules, rows, or other groups:
 
@@ -994,7 +1027,60 @@ The Group module is new to Divi 5 and enables infinite nesting. Groups act as ge
 <!-- /wp:divi/group -->
 ```
 
-Groups can be nested inside other groups for complex component structures (card-in-grid, modal content, etc.).
+Groups can be nested inside other groups for complex component structures (card-in-grid, modal content, etc.). The Group module is also the basis for the **Group Carousel** module.
+
+#### 2.12b Group Carousel Module (New in Divi 5)
+
+The Group Carousel is a carousel/slider where each slide is a Group — a blank canvas that can contain any modules. Unlike traditional carousels with fixed content slots, you have full design freedom per slide.
+
+```html
+<!-- wp:divi/group-carousel {"attrs":{"slides_per_view":"3","autoplay":"on","autoplay_speed":"5000","loop":"on","show_arrows":"on","show_pagination":"on","transition_duration":"500","admin_label":"Feature Carousel"}} -->
+  <!-- wp:divi/group {"attrs":{"background_color":"#f8f9fa","custom_padding":"30px|20px|30px|20px","admin_label":"Slide 1"}} -->
+    <!-- wp:divi/image {"attrs":{"src":"https://example.com/icon1.svg","align":"center","max_width":"60px"}} /-->
+    <!-- wp:divi/text {"attrs":{"content":"<h3>Feature One</h3><p>Description text.</p>","text_orientation":"center"}} /-->
+  <!-- /wp:divi/group -->
+  <!-- wp:divi/group {"attrs":{"background_color":"#f8f9fa","custom_padding":"30px|20px|30px|20px","admin_label":"Slide 2"}} -->
+    <!-- wp:divi/image {"attrs":{"src":"https://example.com/icon2.svg","align":"center","max_width":"60px"}} /-->
+    <!-- wp:divi/text {"attrs":{"content":"<h3>Feature Two</h3><p>Description text.</p>","text_orientation":"center"}} /-->
+  <!-- /wp:divi/group -->
+<!-- /wp:divi/group-carousel -->
+```
+
+Key attributes: `slides_per_view`, `autoplay`, `autoplay_speed`, `loop`, `show_arrows`, `show_pagination`, `transition_duration`, `space_between`. Each child must be a `divi/group` block. Since groups support Divi's full design settings, you can create unique slide styles and transition effects.
+
+#### 2.12c Lottie Module (New in Divi 5)
+
+The Lottie module renders lightweight JSON/SVG-based Lottie animations. These are pixel-perfect at any resolution and much smaller than GIF or video alternatives.
+
+```html
+<!-- wp:divi/lottie {"attrs":{"lottie_url":"https://example.com/animation.json","trigger":"scroll","loop":"on","autoplay":"on","speed":"1","direction":"forward","hover_action":"pause","admin_label":"Loading Animation"}} /-->
+```
+
+Key attributes:
+- `lottie_url` — URL to the Lottie JSON animation file
+- `trigger` — `none` (plays on load), `scroll` (plays on scroll into view), `hover` (plays on hover), `click` (plays on click)
+- `loop` — `on`/`off` — whether the animation loops
+- `autoplay` — `on`/`off` — auto-start on load
+- `speed` — playback speed multiplier (e.g., `1`, `0.5`, `2`)
+- `direction` — `forward` or `reverse`
+- `hover_action` — `pause`, `reverse`, `restart` — what happens on hover
+
+Lottie animations can also be controlled via the **Interactions** system (see 2.14) for scroll-based or mouse-movement effects.
+
+#### 2.12d Icon List Module (New in Divi 5)
+
+A simple list module where each item has its own icon. Fills the gap for styled icon-lists that previously required custom HTML or blurb workarounds.
+
+```html
+<!-- wp:divi/icon-list {"attrs":{"icon_color":"#2563eb","icon_size":"24px","item_spacing":"12px","admin_label":"Feature List"}} -->
+  <!-- wp:divi/icon-list-item {"attrs":{"icon":"%%3%%","content":"<p>First feature benefit</p>"}} /-->
+  <!-- wp:divi/icon-list-item {"attrs":{"icon":"%%3%%","content":"<p>Second feature benefit</p>"}} /-->
+  <!-- wp:divi/icon-list-item {"attrs":{"icon":"%%51%%","content":"<p>Third feature benefit</p>","icon_color":"#e74c3c"}} /-->
+<!-- /wp:divi/icon-list -->
+```
+
+Key attributes on parent (`divi/icon-list`): `icon_color`, `icon_size`, `item_spacing`, `layout` (vertical/horizontal).
+Key attributes on child (`divi/icon-list-item`): `icon` (Divi icon code), `content`, `icon_color` (override per item), `url` (make item a link).
 
 ### 2.13 Divi 5 Loop Builder
 
@@ -1043,8 +1129,9 @@ The Loop Builder displays repeating dynamic content. It supports these query typ
 <!-- /wp:divi/canvas -->
 ```
 
-**Interactions** define show/hide, toggle, and animation behaviors tied to user actions:
+**Interactions** are a robust system for creating interactive elements — popups, toggles, scroll-based effects, and mouse-movement animations. Each element can have one or more interaction rules.
 
+**Click-based interaction (toggle canvas):**
 ```json
 {
   "attrs": {
@@ -1058,6 +1145,80 @@ The Loop Builder displays repeating dynamic content. It supports these query typ
   }
 }
 ```
+
+**Scroll-based interaction (animate on scroll into view):**
+```json
+{
+  "attrs": {
+    "interactions": [
+      {
+        "trigger": "scroll_into_view",
+        "action": "animate",
+        "animation": "fade_up",
+        "duration": "600ms",
+        "delay": "0ms",
+        "easing": "ease-out"
+      }
+    ]
+  }
+}
+```
+
+**Scroll-position interaction (parallax / progress-based):**
+```json
+{
+  "attrs": {
+    "interactions": [
+      {
+        "trigger": "scroll_position",
+        "action": "transform",
+        "property": "translateY",
+        "start_value": "0px",
+        "end_value": "-50px",
+        "start_offset": "0%",
+        "end_offset": "100%"
+      }
+    ]
+  }
+}
+```
+
+**Mouse-movement interaction (follow cursor):**
+```json
+{
+  "attrs": {
+    "interactions": [
+      {
+        "trigger": "mouse_move",
+        "action": "transform",
+        "property": "translate",
+        "intensity": "10",
+        "direction": "opposite"
+      }
+    ]
+  }
+}
+```
+
+**Hover interaction (show/hide element):**
+```json
+{
+  "attrs": {
+    "interactions": [
+      {
+        "trigger": "hover",
+        "action": "show",
+        "target": "overlay-group-id"
+      }
+    ]
+  }
+}
+```
+
+Available trigger types: `click`, `hover`, `scroll_into_view`, `scroll_position`, `mouse_move`, `load`.
+Available action types: `toggle_canvas`, `show`, `hide`, `toggle`, `animate`, `transform`, `add_class`, `remove_class`.
+
+Interactions integrate with the Lottie module — you can trigger Lottie playback from scroll position or hover events.
 
 ### 2.15 Divi 5 Semantic Elements & HTML Wrappers
 
@@ -1075,9 +1236,140 @@ Divi 5 allows changing the HTML element type of any module:
 
 Available semantic tags: `div`, `section`, `article`, `aside`, `nav`, `header`, `footer`, `main`, `figure`, `figcaption`, `button`, `a`, `span`, `ul`, `ol`, `li`
 
+### 2.16 Custom HTML Attributes
+
+Divi 5 lets you add custom HTML attributes to any element for accessibility, data binding, or JavaScript integration. This is essential for ARIA attributes that Divi can't auto-generate based on usage context.
+
+```json
+{
+  "attrs": {
+    "custom_attributes": {
+      "aria-label": "Navigate to pricing section",
+      "role": "navigation",
+      "data-analytics-id": "hero-cta",
+      "data-scroll-target": "#pricing",
+      "tabindex": "0"
+    }
+  }
+}
+```
+
+Common use cases:
+- **Accessibility**: `aria-label`, `aria-describedby`, `aria-expanded`, `role`, `tabindex`
+- **JavaScript hooks**: `data-*` attributes for custom scripts
+- **Analytics**: `data-event`, `data-category` for tracking
+- **HTMX / Alpine.js**: `hx-get`, `x-data`, etc. for interactive frameworks
+
+### 2.17 Flexbox Layout System
+
+Divi 5 provides native flexbox controls on every container element (sections, rows, columns, groups). This replaces Divi 4's rigid column fractions with fluid, responsive layout control.
+
+```json
+{
+  "attrs": {
+    "display": "flex",
+    "flex_direction": "row",
+    "flex_wrap": "wrap",
+    "justify_content": "space-between",
+    "align_items": "center",
+    "gap": "20px",
+    "flex_direction__responsive": {
+      "phone": "column"
+    }
+  }
+}
+```
+
+Key flexbox attributes available on any container:
+- `display` — `flex` or `grid` (see 2.18)
+- `flex_direction` — `row`, `column`, `row-reverse`, `column-reverse`
+- `flex_wrap` — `wrap`, `nowrap`, `wrap-reverse`
+- `justify_content` — `flex-start`, `flex-end`, `center`, `space-between`, `space-around`, `space-evenly`
+- `align_items` — `flex-start`, `flex-end`, `center`, `stretch`, `baseline`
+- `align_content` — same as justify_content (for multi-row flex containers)
+- `gap` — space between items (supports any CSS unit)
+
+Child element attributes:
+- `order` — numeric ordering within the flex container
+- `flex_grow` — how much an item grows relative to siblings
+- `flex_shrink` — how much an item shrinks
+- `flex_basis` — initial size before grow/shrink
+- `align_self` — override parent's `align_items` for this child
+
+### 2.18 CSS Grid Layout System
+
+CSS Grid is available for Sections, Rows, Columns, and Module Groups, providing two-dimensional layout control that goes beyond flexbox's single-axis model.
+
+```json
+{
+  "attrs": {
+    "display": "grid",
+    "grid_template_columns": "repeat(3, 1fr)",
+    "grid_template_rows": "auto",
+    "grid_gap": "30px 20px",
+    "grid_template_columns__responsive": {
+      "tablet": "repeat(2, 1fr)",
+      "phone": "1fr"
+    }
+  }
+}
+```
+
+Key grid attributes on container:
+- `display` — `grid`
+- `grid_template_columns` — column track sizes (e.g., `1fr 2fr`, `repeat(3, 1fr)`, `200px auto 1fr`)
+- `grid_template_rows` — row track sizes
+- `grid_gap` — shorthand for `row-gap column-gap`
+- `justify_items` — horizontal alignment of items within cells
+- `align_items` — vertical alignment of items within cells
+
+Child element attributes:
+- `grid_column` — column span (e.g., `span 2`, `1 / 3`)
+- `grid_row` — row span (e.g., `span 2`, `1 / -1`)
+- `justify_self` — override horizontal alignment for this item
+- `align_self` — override vertical alignment for this item
+
+Grid mode is ideal for masonry-like layouts, dashboard grids, and complex multi-dimensional page sections that would require multiple nested rows in Divi 4.
+
 ---
 
 ## PART THREE: DESIGN SYSTEM (Divi 5)
+
+### 3.0 Advanced Units System
+
+The Advanced Units system underpins every value field in Divi 5. Every input field that accepts a size, length, or dimension supports the full range of CSS units, functions, and variables — not just `px` and `%`.
+
+**Supported CSS units:**
+- Absolute: `px`, `cm`, `mm`, `in`, `pt`, `pc`
+- Relative: `em`, `rem`, `%`, `ch`, `ex`
+- Viewport: `vw`, `vh`, `vmin`, `vmax`, `dvh`, `svh`, `lvh`
+- Container query: `cqi`, `cqb`, `cqw`, `cqh`
+- Flex: `fr` (in grid contexts)
+
+**Supported CSS functions:**
+- `calc()` — e.g., `calc(100% - 40px)`, `calc(var(--divi-number-spacing) * 2)`
+- `clamp()` — e.g., `clamp(1rem, 2vw + 0.5rem, 2.5rem)` for fluid typography
+- `min()` — e.g., `min(100%, 1200px)`
+- `max()` — e.g., `max(300px, 30%)`
+
+**Unitless/keyword values:**
+- `auto`, `inherit`, `initial`, `unset`, `revert`
+- `fit-content`, `max-content`, `min-content`
+
+**CSS variable references:**
+- `var(--divi-number-spacing-lg)` — reference Design Variables (see 3.1)
+- `var(--custom-var, 16px)` — with fallback
+
+This system enables truly fluid, responsive designs. For example, use `clamp()` for font sizes that scale smoothly between breakpoints instead of defining discrete breakpoint values:
+
+```json
+{
+  "attrs": {
+    "text_font_size": "clamp(1rem, 1.5vw + 0.5rem, 2rem)",
+    "custom_padding": "calc(var(--divi-number-section-padding) * 0.5)|20px|calc(var(--divi-number-section-padding) * 0.5)|20px"
+  }
+}
+```
 
 ### 3.1 Design Variables System
 
@@ -1153,6 +1445,37 @@ if ($vars) {
 # List all design variable option keys in wp_options
 wp db query "SELECT option_name FROM $(wp db prefix)options WHERE option_name LIKE '%divi%variable%' OR option_name LIKE '%et_builder%variable%';"
 ```
+
+### 3.2a Relative Colors & HSL
+
+The Relative Colors & HSL system lets you define color relationships instead of static hex values. You define a base color as a variable, then derive related colors by shifting hue, saturation, lightness, or opacity. When the base changes, all derived colors update automatically.
+
+**How it works:**
+1. Define a base color variable: e.g., `--divi-color-primary` = `#2563eb`
+2. Create derived colors using HSL modifiers:
+   - **Lighter variant**: Increase lightness → `hsl(from var(--divi-color-primary) h s calc(l + 20%))`
+   - **Darker variant**: Decrease lightness → `hsl(from var(--divi-color-primary) h s calc(l - 15%))`
+   - **Desaturated**: Reduce saturation → `hsl(from var(--divi-color-primary) h calc(s - 30%) l)`
+   - **Complementary**: Shift hue → `hsl(from var(--divi-color-primary) calc(h + 180) s l)`
+   - **Semi-transparent**: Adjust alpha → `hsl(from var(--divi-color-primary) h s l / 0.5)`
+
+**Example: Building a palette from one base color:**
+```json
+{
+  "attrs": {
+    "background_color": "var(--divi-color-primary)",
+    "text_text_color": "hsl(from var(--divi-color-primary) h s calc(l - 30%))",
+    "border_color": "hsl(from var(--divi-color-primary) h calc(s - 20%) calc(l + 10%))",
+    "box_shadow_color": "hsl(from var(--divi-color-primary) h s l / 0.2)"
+  }
+}
+```
+
+Benefits:
+- Change one base color → the entire palette updates harmoniously
+- No need to manually calculate color variations
+- Maintains consistent color relationships across light/dark themes
+- Works with the Advanced Units system's `calc()` inside HSL channels
 
 ### 3.3 Presets System
 
@@ -1253,6 +1576,86 @@ if (isset($system["presets"])) {
 }
 '
 ```
+
+### 3.5 Preset Manager and Preset Preview
+
+The **Preset Manager** is a centralized UI for browsing, editing, reordering, and organizing all presets on a site. Instead of editing presets inline on individual modules, you can:
+- View all Element Presets and OG Presets in one place
+- Edit presets in a dedicated **Preset Previewer** that shows changes live without affecting page content
+- Reorder presets (affects the order in the preset picker)
+- Delete unused presets
+
+The Preset Previewer renders a mock element with the preset applied, so you can tweak typography, colors, spacing, etc. and see the result before committing. This is especially useful when presets are applied across dozens of pages — you want to be sure of changes before they propagate.
+
+**WP-CLI note**: Preset data is stored in `wp_options` (see 3.3). Changes made via the Preset Manager are reflected in the same option keys. When auditing presets programmatically, the data you read via `wp eval` is the same data the Preset Manager edits.
+
+### 3.6 Style Inspector
+
+The **Style Inspector** gives you a complete overview of every style, content value, and preset applied to any element. It works at two levels:
+
+- **Page-level**: Shows all styles applied across the entire page — useful for finding where a specific color or font is used
+- **Element-level**: Focus on a single element to see only its computed values, including inherited preset styles and design variable resolutions
+
+The Style Inspector lets you edit values directly and see where each value comes from (inline override, preset, or variable). It is the primary debugging tool when styles aren't applying as expected — it reveals the cascade and specificity of Divi's design system.
+
+**When to recommend the Style Inspector to users:**
+- "Why is this element a different color than expected?" → Check if a preset or variable override is active
+- "Where is this font coming from?" → Trace through preset → variable → resolved value chain
+- "What styles are applied to this element?" → Full computed style view
+
+### 3.7 Workflow Tools (Visual Builder)
+
+These features are primarily Visual Builder UI tools. While the agent operates via WP-CLI, knowing these exist helps you advise users on efficient workflows and understand how content is structured.
+
+#### Attribute Management
+The Attributes Management system lets you selectively or collectively copy, paste, and reset attributes across elements. You can:
+- Copy styles, presets, or content from one element and paste them onto another
+- Copy at the field level (just the font size), group level (all typography), or element level (everything)
+- Selectively reset attributes via the right-click menu (e.g., reset only the border of an element while keeping everything else)
+- Paste across different module types — typography presets from a text module onto a blurb module
+
+#### Extend Attributes
+Extend Attributes propagates any attribute or collection of attributes to matching elements across a page or the entire site. Right-click an element → Extend Attributes → choose what to extend (styles, presets, content) → choose scope (this page, all pages, specific module types).
+
+**Important distinction**: Extending is a one-time propagation, not a live link. If you need live-linked values, use Design Variables or OG Presets instead. Extend is best for "apply this button style to all buttons on the site right now."
+
+#### Find and Replace
+The Find and Replace system lets you swap any value site-wide. Key use cases:
+- Replace a hardcoded hex color (`#0c71c3`) with a Design Variable (`var(--divi-color-primary)`)
+- Swap a font family across all modules
+- Replace a static spacing value with a Number variable
+- Migrate from static values to variables as part of building a design system
+
+This is the recommended way to transition an existing Divi 5 site from hardcoded values to a proper Design Variable system.
+
+#### Settings Search and Filtering
+Divi modules can have hundreds of settings across Content, Design, and Advanced tabs. The Settings Search & Filtering system lets you:
+- Type a keyword to instantly find any setting (e.g., "border radius", "font size")
+- Filter to show only modified settings (non-default values)
+- Filter by setting type (typography, spacing, colors)
+
+Recommend this to users who say "I can't find the setting for X."
+
+#### Responsive Editor
+The Responsive Editor lets you edit responsive values for all breakpoints inline, without switching the viewport preview mode. Click the responsive icon next to any setting → see and edit values for all 7 breakpoints simultaneously. This is much faster than switching between Desktop/Tablet/Phone preview modes.
+
+This feature pairs well with Design Variables — when you know the exact values you want per breakpoint, you can enter them all at once.
+
+#### Page Manager, Preview Mode, and Content Drill Down
+- **Page Manager**: A structured tree view of every element on the page — sections, rows, columns, groups, modules — in hierarchy. Drag to reorder, click to select.
+- **Preview Mode**: Toggle to see the page as visitors will see it, without any builder chrome. Useful for checking responsive layouts.
+- **Content Drill Down**: When working with deeply nested content (groups inside groups, nested rows), Content Drill Down lets you "zoom in" on a specific container. The builder focuses on just that container's children, hiding everything else. Navigate back up using breadcrumbs. Essential for complex layouts.
+
+#### Command Center
+The Divi 5 Command Center (`Cmd+K` / `Ctrl+K`) is a universal search and action palette. Use it to:
+- Add any element by name ("add text module", "add section")
+- Jump to specific settings ("border radius", "background color")
+- Open modals (library, preset manager, variable manager)
+- Switch view modes (desktop, tablet, phone, wireframe)
+- Navigate to any page, template, or layout
+- Run common edit actions (undo, redo, save, publish)
+
+This is the fastest way to navigate the Divi 5 Visual Builder.
 
 ---
 
@@ -1976,6 +2379,14 @@ After completing Divi work, prepare handoff summaries:
 - **For Security Agent**: Report any custom PHP added to functions.php, third-party Divi plugins installed, and code modules containing JavaScript that should be reviewed for XSS risks.
 - **For SEO Agent**: Report new pages/layouts created, heading hierarchy (H1/H2/H3 assignments), images without alt text, and pages where Builder was enabled/disabled.
 - **For Performance Agent**: Report total module counts on complex pages, any new font loads, image sizes, and animation usage.
+
+---
+
+## Discovered Patterns
+
+*This section is auto-populated by all agents (Security, SEO, Divi) when they discover Divi-related architectural patterns, gotchas, or solutions during work sessions. Entries are ordered chronologically.*
+
+*(No entries yet — patterns will accumulate as agents work across sites.)*
 
 ---
 
