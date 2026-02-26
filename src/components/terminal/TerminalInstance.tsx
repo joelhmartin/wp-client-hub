@@ -1,11 +1,15 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+export interface TerminalInstanceHandle {
+  writeToTerminal: (text: string) => void;
+}
 
 interface TerminalInstanceProps {
   siteId: string;
@@ -13,9 +17,11 @@ interface TerminalInstanceProps {
   type: 'claude' | 'ssh';
   visible: boolean;
   claudeMode?: string | null;
+  agentType?: string;
 }
 
-export function TerminalInstance({ siteId, envId, type, visible, claudeMode }: TerminalInstanceProps) {
+export const TerminalInstance = forwardRef<TerminalInstanceHandle, TerminalInstanceProps>(
+  function TerminalInstance({ siteId, envId, type, visible, claudeMode, agentType }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -23,6 +29,15 @@ export function TerminalInstance({ siteId, envId, type, visible, claudeMode }: T
   const connectedKeyRef = useRef<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const dragCounterRef = useRef(0);
+
+  useImperativeHandle(ref, () => ({
+    writeToTerminal: (text: string) => {
+      const ws = wsRef.current;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'input', data: text }));
+      }
+    },
+  }));
 
   const sendFile = useCallback((file: File) => {
     const ws = wsRef.current;
@@ -101,7 +116,7 @@ export function TerminalInstance({ siteId, envId, type, visible, claudeMode }: T
     // For claude type, wait until mode is chosen
     if (type === 'claude' && !claudeMode) return;
 
-    const connectionKey = `${siteId}-${envId}-${type}-${claudeMode || ''}`;
+    const connectionKey = `${siteId}-${envId}-${type}-${claudeMode || ''}-${agentType || ''}`;
     if (connectedKeyRef.current === connectionKey) return;
 
     // Close previous connection
@@ -113,6 +128,9 @@ export function TerminalInstance({ siteId, envId, type, visible, claudeMode }: T
     const params = new URLSearchParams({ siteId, envId, type });
     if (type === 'claude' && claudeMode) {
       params.set('claudeMode', claudeMode);
+    }
+    if (agentType) {
+      params.set('agentType', agentType);
     }
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001';
     const ws = new WebSocket(`${wsUrl}?${params}`);
@@ -166,7 +184,7 @@ export function TerminalInstance({ siteId, envId, type, visible, claudeMode }: T
       dataHandler.dispose();
       resizeHandler.dispose();
     };
-  }, [siteId, envId, type, claudeMode]);
+  }, [siteId, envId, type, claudeMode, agentType]);
 
   // Re-fit on visibility change
   useEffect(() => {
@@ -283,4 +301,4 @@ export function TerminalInstance({ siteId, envId, type, visible, claudeMode }: T
       )}
     </div>
   );
-}
+});

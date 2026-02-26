@@ -8,6 +8,7 @@ import { getEnvironment, getSiteWithEnvironments, setEnvironmentPassword } from 
 import { encryptPassword } from '../src/lib/db';
 import { getSSHPassword } from '../src/lib/kinsta-api';
 import { ensureSiteWorkspace, readClaudeMd, getGlobalClaudeMdPath, getSiteClaudeMdPath } from '../src/lib/workspaces';
+import { composeAgentSystemPrompt, isAgentType } from '../src/lib/agent-prompts';
 import 'dotenv/config';
 
 const PORT = 3001;
@@ -99,6 +100,7 @@ wss.on('connection', async (ws: WebSocket, req) => {
   const envId = url.searchParams.get('envId');
   const termType = url.searchParams.get('type') as 'claude' | 'ssh';
   const claudeMode = url.searchParams.get('claudeMode') || 'regular';
+  const agentTypeParam = url.searchParams.get('agentType');
 
   if (!siteId || !envId || !termType) {
     ws.close(1008, 'Missing siteId, envId, or type');
@@ -144,13 +146,27 @@ wss.on('connection', async (ws: WebSocket, req) => {
   let args: string[];
 
   if (termType === 'claude') {
-    const systemPrompt = [
-      `You are connected to the WordPress site "${site.site_name}" (${env.environment_name} environment).`,
-      `To SSH into this server, run: sshpass -e ssh -o StrictHostKeyChecking=no -p ${env.ssh_port} ${env.ssh_username}@${env.ssh_host}`,
-      `The SSHPASS environment variable is already set with the SSH password.`,
-      `Once connected, you can use WP-CLI commands like: wp plugin list, wp theme list, wp option get siteurl, etc.`,
-      `Always use the full sshpass command above to connect - do not ask the user for credentials.`,
-    ].join('\n');
+    const sshCommand = `sshpass -e ssh -o StrictHostKeyChecking=no -p ${env.ssh_port} ${env.ssh_username}@${env.ssh_host}`;
+
+    let systemPrompt: string;
+    if (isAgentType(agentTypeParam)) {
+      // Specialized agent: compose base + agent-specific + site context prompt
+      systemPrompt = composeAgentSystemPrompt(agentTypeParam, {
+        siteName: site.site_name,
+        envName: env.environment_name,
+        sshCommand,
+      });
+      console.log(`[WS] Using ${agentTypeParam} agent prompt (${systemPrompt.length} chars)`);
+    } else {
+      // Default Claude Code tab: original system prompt
+      systemPrompt = [
+        `You are connected to the WordPress site "${site.site_name}" (${env.environment_name} environment).`,
+        `To SSH into this server, run: ${sshCommand}`,
+        `The SSHPASS environment variable is already set with the SSH password.`,
+        `Once connected, you can use WP-CLI commands like: wp plugin list, wp theme list, wp option get siteurl, etc.`,
+        `Always use the full sshpass command above to connect - do not ask the user for credentials.`,
+      ].join('\n');
+    }
 
     shell = '/Users/bif/.local/bin/claude';
     args = ['--system-prompt', systemPrompt];
@@ -186,7 +202,8 @@ wss.on('connection', async (ws: WebSocket, req) => {
     ];
   }
 
-  console.log(`[WS] Spawning ${termType} terminal for ${site.site_name} (${env.environment_name})`);
+  const termLabel = agentTypeParam ? `${termType}:${agentTypeParam}` : termType;
+  console.log(`[WS] Spawning ${termLabel} terminal for ${site.site_name} (${env.environment_name})`);
 
   // Set cwd to site workspace for Claude spawns so it picks up CLAUDE.md
   const cwd = termType === 'claude'
@@ -213,7 +230,7 @@ wss.on('connection', async (ws: WebSocket, req) => {
     return;
   }
 
-  const ptyId = `${siteId}-${envId}-${termType}`;
+  const ptyId = `${siteId}-${envId}-${termType}${agentTypeParam ? `-${agentTypeParam}` : ''}`;
   activePtys.set(ptyId, ptyProcess);
 
   // PTY → Browser

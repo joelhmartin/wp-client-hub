@@ -1,8 +1,8 @@
 'use client';
 
-import { Fragment } from 'react';
+import { Fragment, useState, useCallback } from 'react';
 import { useTerminalStore } from '@/stores/terminal-store';
-import type { ClaudeMode } from '@/stores/terminal-store';
+import type { ClaudeMode, SubTab } from '@/stores/terminal-store';
 import { useTerminal } from '@/hooks/useTerminal';
 import { TerminalTabs } from './TerminalTabs';
 import { TerminalInstance } from './TerminalInstance';
@@ -10,6 +10,12 @@ import { ClaudeMdEditor } from './ClaudeMdEditor';
 import { WelcomeScreen } from '../dashboard/WelcomeScreen';
 import { SEOPanel } from '../seo/SEOPanel';
 import { PushEnvironmentMenu } from './PushEnvironmentMenu';
+import { AgentTerminal } from '../agents/AgentTerminal';
+
+type AgentType = 'security' | 'seo-agent' | 'divi';
+
+const AGENT_TABS: SubTab[] = ['security', 'seo-agent', 'divi'];
+const CLAUDE_BASED_TABS: SubTab[] = ['claude', 'security', 'seo-agent', 'divi'];
 
 function ClaudeModePicker({ onSelect }: { onSelect: (mode: ClaudeMode) => void }) {
   return (
@@ -47,6 +53,20 @@ export function TerminalPanel() {
   const { tabGroups, activeGroupIndex } = useTerminalStore();
   const { setActiveGroup, setActiveSubTab, setClaudeMode } = useTerminalStore();
   const { disconnectFromSite } = useTerminal();
+
+  // Track which agent tabs have been activated per group (lazy mounting)
+  // Key: `${siteId}-${envId}-${agentType}`
+  const [activatedAgents, setActivatedAgents] = useState<Set<string>>(new Set());
+
+  const markAgentActivated = useCallback((siteId: string, envId: string, agentType: string) => {
+    const key = `${siteId}-${envId}-${agentType}`;
+    setActivatedAgents((prev) => {
+      if (prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+  }, []);
 
   if (tabGroups.length === 0) {
     return <WelcomeScreen />;
@@ -101,9 +121,13 @@ export function TerminalPanel() {
       {activeGroup && (
         <TerminalTabs
           group={activeGroup}
-          onSubTabChange={(tab) =>
-            setActiveSubTab(activeGroup.siteId, activeGroup.envId, tab)
-          }
+          onSubTabChange={(tab) => {
+            setActiveSubTab(activeGroup.siteId, activeGroup.envId, tab);
+            // Lazy-mount: mark agent as activated on first visit
+            if (AGENT_TABS.includes(tab)) {
+              markAgentActivated(activeGroup.siteId, activeGroup.envId, tab);
+            }
+          }}
         />
       )}
 
@@ -111,11 +135,12 @@ export function TerminalPanel() {
       <div className="flex-1 relative overflow-hidden">
         {tabGroups.map((group, index) => {
           const isActive = index === activeGroupIndex;
-          const showClaudePicker = isActive && group.activeSubTab === 'claude' && !group.claudeMode;
+          const needsClaudePicker = CLAUDE_BASED_TABS.includes(group.activeSubTab) && !group.claudeMode;
+          const showClaudePicker = isActive && needsClaudePicker;
 
           return (
             <Fragment key={`${group.siteId}-${group.envId}`}>
-              {/* Claude mode picker — only for active group, only when needed */}
+              {/* Claude mode picker — for any Claude-based tab when mode not chosen */}
               {showClaudePicker && (
                 <ClaudeModePicker
                   onSelect={(mode) =>
@@ -143,6 +168,24 @@ export function TerminalPanel() {
                 visible={isActive && group.activeSubTab === 'ssh'}
               />
 
+              {/* Agent terminals — lazy-mounted on first tab visit */}
+              {AGENT_TABS.map((agentTab) => {
+                const agentKey = `${group.siteId}-${group.envId}-${agentTab}`;
+                const isActivated = activatedAgents.has(agentKey);
+                if (!isActivated || !group.claudeMode) return null;
+
+                return (
+                  <AgentTerminal
+                    key={agentKey}
+                    agentType={agentTab as AgentType}
+                    siteId={group.siteId}
+                    envId={group.envId}
+                    visible={isActive && group.activeSubTab === agentTab}
+                    claudeMode={group.claudeMode}
+                  />
+                );
+              })}
+
               {/* Non-terminal panels — only render for active group */}
               {isActive && group.activeSubTab === 'claude-md' && (
                 <ClaudeMdEditor
@@ -150,7 +193,7 @@ export function TerminalPanel() {
                   siteName={group.siteName}
                 />
               )}
-              {isActive && group.activeSubTab === 'seo' && (
+              {isActive && group.activeSubTab === 'seo-engine' && (
                 <SEOPanel
                   siteId={group.siteId}
                   envId={group.envId}

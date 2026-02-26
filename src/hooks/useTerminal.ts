@@ -16,6 +16,9 @@ export function useTerminal() {
         primaryDomain: primaryDomain || null,
         claudeSessionId: null,
         sshSessionId: null,
+        securitySessionId: null,
+        seoAgentSessionId: null,
+        diviSessionId: null,
       });
     },
     [addTabGroup]

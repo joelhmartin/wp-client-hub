@@ -11,6 +11,8 @@ export interface TerminalTab {
 
 export type ClaudeMode = 'regular' | 'skip-permissions';
 
+export type SubTab = 'claude' | 'ssh' | 'claude-md' | 'security' | 'seo-agent' | 'divi' | 'seo-engine';
+
 export interface SiteTabGroup {
   siteId: string;
   envId: string;
@@ -19,7 +21,10 @@ export interface SiteTabGroup {
   primaryDomain: string | null;
   claudeSessionId: string | null;
   sshSessionId: string | null;
-  activeSubTab: 'claude' | 'ssh' | 'claude-md' | 'seo';
+  securitySessionId: string | null;
+  seoAgentSessionId: string | null;
+  diviSessionId: string | null;
+  activeSubTab: SubTab;
   claudeMode: ClaudeMode | null;
 }
 
@@ -32,8 +37,8 @@ interface TerminalStore {
   setClaudeMode: (siteId: string, envId: string, mode: ClaudeMode) => void;
   removeTabGroup: (siteId: string, envId: string) => void;
   setActiveGroup: (index: number) => void;
-  setActiveSubTab: (siteId: string, envId: string, tab: 'claude' | 'ssh' | 'claude-md' | 'seo') => void;
-  setSessionId: (siteId: string, envId: string, type: 'claude' | 'ssh', sessionId: string) => void;
+  setActiveSubTab: (siteId: string, envId: string, tab: SubTab) => void;
+  setSessionId: (siteId: string, envId: string, type: 'claude' | 'ssh' | 'security' | 'seo-agent' | 'divi', sessionId: string) => void;
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
   clearToast: () => void;
 }
@@ -52,7 +57,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
       return;
     }
     set((state) => ({
-      tabGroups: [...state.tabGroups, { ...group, activeSubTab: 'claude', claudeMode: null }],
+      tabGroups: [...state.tabGroups, { ...group, activeSubTab: 'claude' as SubTab, claudeMode: null }],
       activeGroupIndex: state.tabGroups.length,
     }));
   },
@@ -87,14 +92,17 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
 
   setSessionId: (siteId, envId, type, sessionId) => {
     set((state) => ({
-      tabGroups: state.tabGroups.map((g) =>
-        g.siteId === siteId && g.envId === envId
-          ? {
-              ...g,
-              ...(type === 'claude' ? { claudeSessionId: sessionId } : { sshSessionId: sessionId }),
-            }
-          : g
-      ),
+      tabGroups: state.tabGroups.map((g) => {
+        if (g.siteId !== siteId || g.envId !== envId) return g;
+        switch (type) {
+          case 'claude': return { ...g, claudeSessionId: sessionId };
+          case 'ssh': return { ...g, sshSessionId: sessionId };
+          case 'security': return { ...g, securitySessionId: sessionId };
+          case 'seo-agent': return { ...g, seoAgentSessionId: sessionId };
+          case 'divi': return { ...g, diviSessionId: sessionId };
+          default: return g;
+        }
+      }),
     }));
   },
 
