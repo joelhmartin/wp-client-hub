@@ -8,7 +8,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev          # Next.js (port 3000, turbopack) + WebSocket server (port 3001) via concurrently
 npm run build        # Production build
 npm run start        # Production Next.js + WebSocket server
-npm run seed         # Delete & re-seed SQLite DB from kinsta_ssh_credentials.csv
 npm run seo:setup    # Create/migrate Postgres SEO tables
 ```
 
@@ -20,7 +19,7 @@ WP Client Hub is a WordPress site management dashboard for ~116 Kinsta sites (16
 
 1. **Next.js app** (port 3000) — UI + API routes
 2. **WebSocket server** (port 3001) — bridges xterm.js terminals in the browser to node-pty processes on the server
-3. **SQLite DB** (`data/wp-client-hub.db`) — auto-created on first run, auto-imports from `kinsta_ssh_credentials.csv`
+3. **SQLite DB** (`data/wp-client-hub.db`) — auto-created on first run, populated via Kinsta API
 
 An optional **PostgreSQL** database (`wp_seo_engine`) powers the SEO engine subsystem.
 

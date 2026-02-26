@@ -12,7 +12,6 @@ out/
 # data
 data/
 !data/agent-prompts/
-kinsta_ssh_credentials.csv
 
 # misc
 .DS_Store
