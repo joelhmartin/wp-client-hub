@@ -71,3 +71,40 @@ Encryption implemented in `src/lib/crypto.ts`. Key from `DB_ENCRYPTION_KEY` env 
 ## Environment Variables
 
 See `.env.example`. Required: `KINSTA_API_KEY`, `KINSTA_USER`, `KINSTA_USER_PASSWORD`, `KINSTA_AGENCY_ID`, `DB_ENCRYPTION_KEY`. SEO engine also needs `POSTGRES_*` vars.
+
+## Parallel Codebase: WP Client Hub Online
+
+This project has a sibling deployment at `/Volumes/G-DRIVE SSD/DEVELOPER/wp-client-hub-online` that is nearly identical in structure but runs on Google Cloud and uses Gemini instead of Claude.
+
+**When making changes to this project, always run a parallel agent to apply the same changes to `wp-client-hub-online`.** The two codebases share the same DB schema, Kinsta API integration, credential management, SEO engine, and most UI components. Only the AI interaction layer differs.
+
+### Key Differences
+
+| This project (local) | Online version |
+|---|---|
+| Claude CLI via `node-pty` PTY in xterm.js terminal | Gemini chat UI with function calling (no PTY) |
+| Two processes: Next.js + `server/ws-server.ts` | Single process: Next.js only |
+| `@anthropic-ai/sdk` for SEO plans | `@google/genai` for SEO plans + chat |
+| `terminal-store.ts` (sub-tabs: `claude\|ssh\|claude-md\|seo`) | `chat-store.ts` (sub-tabs: `chat\|ai-instructions\|seo`) |
+| No auth (local dev) | Google IAP auth on Cloud Run |
+| SQLite WAL mode | SQLite DELETE mode (GCS FUSE) |
+| `node-pty`, `ws`, `xterm.js` deps | No PTY deps; `@google/genai` instead |
+
+### What to Mirror
+
+Changes to these areas should always be mirrored:
+- `src/lib/db/` — schema, queries, credential management
+- `src/lib/kinsta-api.ts` — API client, environment fetching
+- `src/lib/crypto.ts` — encryption
+- `src/lib/seo/` — crawler, plan executor, rollback, queries
+- `src/app/api/` — site routes, credential routes, SEO routes
+- `src/lib/workspaces.ts` — workspace management
+- UI components (sidebar, site list, SEO panels) — adapt as needed
+
+### What NOT to Mirror
+
+- `server/ws-server.ts` — no equivalent in online version
+- `src/components/terminal/` — replaced by `src/components/chat/` online
+- `src/lib/terminal-manager.ts` — no equivalent online
+- Claude CLI-specific logic (system prompts, PTY spawning)
+- File upload to PTY (online version handles file attachments differently)
