@@ -1,5 +1,6 @@
 import { getDb, decryptPassword } from './index';
 import type { Site, SiteListItem, Environment } from '../types';
+import type { ScanMetadata } from '../discovery/types';
 
 export function getAllSites(): SiteListItem[] {
   const db = getDb();
@@ -102,4 +103,64 @@ export function getEnvironmentsMissingPasswords(): string[] {
     "SELECT id FROM environments WHERE ssh_password IS NULL OR ssh_password = ''"
   ).all() as { id: string }[];
   return rows.map((r) => r.id);
+}
+
+// ─── Scan Metadata ───
+
+export function getScanMetadata(siteId: string): ScanMetadata | null {
+  const db = getDb();
+  return db.prepare('SELECT * FROM scan_metadata WHERE site_id = ?').get(siteId) as ScanMetadata | null;
+}
+
+export function setScanMetadata(
+  siteId: string,
+  status: ScanMetadata['last_scan_status'],
+  error?: string | null,
+  dataJson?: string | null
+): void {
+  const db = getDb();
+  db.prepare(`
+    INSERT INTO scan_metadata (site_id, last_scan_at, last_scan_status, last_scan_error, scan_data_json)
+    VALUES (?, datetime('now'), ?, ?, ?)
+    ON CONFLICT(site_id) DO UPDATE SET
+      last_scan_at = datetime('now'),
+      last_scan_status = excluded.last_scan_status,
+      last_scan_error = excluded.last_scan_error,
+      scan_data_json = COALESCE(excluded.scan_data_json, scan_metadata.scan_data_json)
+  `).run(siteId, status, error || null, dataJson || null);
+}
+
+export function getStaleScannedSiteCount(days: number): number {
+  const db = getDb();
+  const row = db.prepare(`
+    SELECT COUNT(*) as count FROM sites s
+    LEFT JOIN scan_metadata sm ON s.id = sm.site_id
+    WHERE sm.last_scan_at IS NULL
+       OR sm.last_scan_at < datetime('now', ? || ' days')
+  `).get(`-${days}`) as { count: number };
+  return row.count;
+}
+
+export function getLiveEnvironments(): Array<{ site_id: string; env_id: string; site_name: string }> {
+  const db = getDb();
+  return db.prepare(`
+    SELECT e.site_id, e.id as env_id, s.site_name
+    FROM environments e
+    JOIN sites s ON e.site_id = s.id
+    WHERE e.is_live = 1
+    ORDER BY s.site_name
+  `).all() as Array<{ site_id: string; env_id: string; site_name: string }>;
+}
+
+export function getSitesNeedingScan(days: number): Array<{ site_id: string; env_id: string; site_name: string }> {
+  const db = getDb();
+  return db.prepare(`
+    SELECT e.site_id, e.id as env_id, s.site_name
+    FROM environments e
+    JOIN sites s ON e.site_id = s.id
+    LEFT JOIN scan_metadata sm ON s.id = sm.site_id
+    WHERE e.is_live = 1
+      AND (sm.last_scan_at IS NULL OR sm.last_scan_at < datetime('now', ? || ' days'))
+    ORDER BY s.site_name
+  `).all(`-${days}`) as Array<{ site_id: string; env_id: string; site_name: string }>;
 }

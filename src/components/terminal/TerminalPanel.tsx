@@ -191,6 +191,7 @@ export function TerminalPanel() {
                 <ClaudeMdEditor
                   siteId={group.siteId}
                   siteName={group.siteName}
+                  envId={group.envId}
                 />
               )}
               {isActive && group.activeSubTab === 'seo-engine' && (

@@ -5,17 +5,19 @@ import { useState, useEffect, useCallback } from 'react';
 interface ClaudeMdEditorProps {
   siteId: string;
   siteName: string;
+  envId: string;
 }
 
 type InnerTab = 'site' | 'global';
 
-export function ClaudeMdEditor({ siteId, siteName }: ClaudeMdEditorProps) {
+export function ClaudeMdEditor({ siteId, siteName, envId }: ClaudeMdEditorProps) {
   const [innerTab, setInnerTab] = useState<InnerTab>('site');
   const [siteContent, setSiteContent] = useState('');
   const [globalContent, setGlobalContent] = useState('');
   const [siteOriginal, setSiteOriginal] = useState('');
   const [globalOriginal, setGlobalOriginal] = useState('');
   const [saving, setSaving] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const isDirty = innerTab === 'site'
@@ -72,6 +74,24 @@ export function ClaudeMdEditor({ siteId, siteName }: ClaudeMdEditorProps) {
     }
   };
 
+  const handleScan = async () => {
+    setScanning(true);
+    try {
+      const res = await fetch('/api/discovery/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ siteId, envId }),
+      });
+      if (!res.ok) throw new Error('Scan failed');
+      // Refresh content after scan
+      await fetchContent();
+    } catch (err) {
+      console.error('Scan error:', err);
+    } finally {
+      setScanning(false);
+    }
+  };
+
   const content = innerTab === 'site' ? siteContent : globalContent;
   const setContent = innerTab === 'site' ? setSiteContent : setGlobalContent;
 
@@ -104,6 +124,20 @@ export function ClaudeMdEditor({ siteId, siteName }: ClaudeMdEditorProps) {
         <div className="flex items-center gap-2">
           {isDirty && (
             <span className="text-xs text-warning">Unsaved changes</span>
+          )}
+          {innerTab === 'site' && (
+            <button
+              onClick={handleScan}
+              disabled={scanning}
+              className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                scanning
+                  ? 'bg-bg-tertiary text-text-muted cursor-not-allowed'
+                  : 'text-text-secondary hover:text-accent hover:bg-accent/10'
+              }`}
+              title="Scan site via SSH to auto-populate architecture info"
+            >
+              {scanning ? 'Scanning...' : 'Scan Site'}
+            </button>
           )}
           <button
             onClick={fetchContent}

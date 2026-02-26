@@ -8,6 +8,8 @@
     "build": "next build",
     "start": "concurrently --kill-others \"next start\" \"tsx server/ws-server.ts\"",
     "seo:setup": "tsx scripts/setup-seo-db.ts",
+    "scan": "tsx scripts/discovery-scan.ts",
+    "scan:site": "tsx scripts/discovery-scan.ts --site",
     "postinstall": "chmod +x node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper 2>/dev/null || true"
   },
   "repository": {

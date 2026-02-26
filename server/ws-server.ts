@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { getDb } from '../src/lib/db';
-import { getEnvironment, getSiteWithEnvironments, setEnvironmentPassword } from '../src/lib/db/sites';
+import { getEnvironment, getSiteWithEnvironments, setEnvironmentPassword, getStaleScannedSiteCount } from '../src/lib/db/sites';
 import { encryptPassword } from '../src/lib/db';
 import { getSSHPassword } from '../src/lib/kinsta-api';
 import { ensureSiteWorkspace, readClaudeMd, getGlobalClaudeMdPath, getSiteClaudeMdPath } from '../src/lib/workspaces';
@@ -94,6 +94,14 @@ console.log(`[WS] WebSocket server listening on ws://localhost:${PORT}`);
 // Ensure DB is initialized
 getDb();
 
+// Check for stale site scans
+try {
+  const staleCount = getStaleScannedSiteCount(30);
+  if (staleCount > 0) {
+    console.log(`[Discovery] ${staleCount} site${staleCount === 1 ? '' : 's'} not scanned in 30+ days. Run: npm run scan`);
+  }
+} catch {}
+
 wss.on('connection', async (ws: WebSocket, req) => {
   const url = new URL(req.url || '/', `http://localhost:${PORT}`);
   const siteId = url.searchParams.get('siteId');
@@ -165,6 +173,7 @@ wss.on('connection', async (ws: WebSocket, req) => {
         `The SSHPASS environment variable is already set with the SSH password.`,
         `Once connected, you can use WP-CLI commands like: wp plugin list, wp theme list, wp option get siteurl, etc.`,
         `Always use the full sshpass command above to connect - do not ask the user for credentials.`,
+        `Your working directory contains a CLAUDE.md file for this site. When you discover important architecture, configuration, or issue details, update that file so future sessions have the context.`,
       ].join('\n');
     }
 

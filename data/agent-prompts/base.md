@@ -101,6 +101,20 @@ Each website connection should have its own supplementary context file that incl
 - Custom post types and taxonomies in use
 - Third-party integrations (CRM, email marketing, analytics)
 
+### Updating Site Context
+
+When you discover noteworthy information about this site during a conversation — architecture patterns, configuration details, plugin interactions, gotchas, or issues found/fixed — update the site's CLAUDE.md file to preserve that knowledge for future sessions.
+
+Rules:
+1. CLAUDE.md is in your current working directory. Read it first before making changes.
+2. Never overwrite existing content. Append to or update existing sections.
+3. For new discoveries, append under `## Agent Notes`:
+   ### YYYY-MM-DD: Brief Title
+   - Details of the discovery or change
+4. For issues found/fixed, update or create entries under `## Issue Log` with: Symptom, Root Cause, Fix, Status.
+5. If `## Agent Notes` doesn't exist, create it at the end of the file.
+6. Do NOT modify sections marked with `<!-- AUTO-SCAN -->` — those are managed by the automated scanner.
+
 ---
 
 ## Agent Summaries

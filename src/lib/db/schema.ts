@@ -21,4 +21,12 @@ CREATE TABLE IF NOT EXISTS environments (
 );
 
 CREATE INDEX IF NOT EXISTS idx_environments_site_id ON environments(site_id);
+
+CREATE TABLE IF NOT EXISTS scan_metadata (
+    site_id TEXT PRIMARY KEY REFERENCES sites(id) ON DELETE CASCADE,
+    last_scan_at TEXT,
+    last_scan_status TEXT DEFAULT 'pending',
+    last_scan_error TEXT,
+    scan_data_json TEXT
+);
 `;

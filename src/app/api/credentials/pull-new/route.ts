@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { listAllSites, getSSHPassword } from '@/lib/kinsta-api';
 import { getExistingSiteIds, upsertSite, upsertEnvironment, setEnvironmentPassword, getEnvironmentsMissingPasswords } from '@/lib/db/sites';
 import { encryptPassword } from '@/lib/db';
+import { scanSite } from '@/lib/discovery/scanner';
 
 // Pause between password fetches to avoid Kinsta API rate limits
 const PASSWORD_FETCH_DELAY_MS = 500;
@@ -17,6 +18,7 @@ export async function POST() {
 
     let newSiteCount = 0;
     let newEnvCount = 0;
+    const newSiteLiveEnvs: Array<{ siteId: string; envId: string }> = [];
 
     for (const site of kinstaSites) {
       const isNew = !existingIds.has(site.id);
@@ -28,6 +30,10 @@ export async function POST() {
 
       for (const env of site.environments || []) {
         if (isNew) newEnvCount++;
+        const isLiveEnv = (env.display_name || env.name || '').toLowerCase() === 'live';
+        if (isNew && isLiveEnv) {
+          newSiteLiveEnvs.push({ siteId: site.id, envId: env.id });
+        }
 
         const isLive = (env.display_name || env.name || '').toLowerCase() === 'live' ? 1 : 0;
 
@@ -81,6 +87,18 @@ export async function POST() {
     }
 
     console.log(`[Pull] Done. Fetched ${passwordsFetched} passwords, ${passwordsFailed} failed.`);
+
+    // Fire-and-forget: trigger discovery scans for newly added sites
+    if (newSiteLiveEnvs.length > 0) {
+      console.log(`[Pull] Triggering discovery scans for ${newSiteLiveEnvs.length} new sites...`);
+      Promise.all(
+        newSiteLiveEnvs.map(({ siteId, envId }) =>
+          scanSite(siteId, envId).catch(err =>
+            console.error(`[Pull] Discovery scan failed for ${siteId}:`, err)
+          )
+        )
+      ).catch(() => {});
+    }
 
     return NextResponse.json({
       message: `Found ${newSiteCount} new sites. Fetched ${passwordsFetched} passwords (${passwordsFailed} failed, ${missingPasswordEnvs.length} were missing).`,
