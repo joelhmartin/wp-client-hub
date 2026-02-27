@@ -1661,71 +1661,379 @@ This is the fastest way to navigate the Divi 5 Visual Builder.
 
 ## PART FOUR: THEME BUILDER MANAGEMENT
 
-### 4.1 Theme Builder Architecture
+### 4.1 Theme Builder Architecture — Complete Data Model
 
-The Theme Builder controls dynamic templates for every part of a site:
-- **Global Header** — site-wide header
-- **Global Footer** — site-wide footer
-- **Default Website Template** — fallback body layout
-- **Post Templates** — per-post-type body layouts
-- **Category/Tag/Archive Templates** — listing pages
-- **404 Template** — error page
-- **Search Results Template** — search page
-- **Author Templates** — author archive pages
+The Theme Builder is Divi's template system. It controls dynamic templates (headers, footers, body layouts) for every part of a site. Understanding the **exact data structure** is critical — it's a chain of WordPress custom post types connected by post meta.
 
+#### 4.1.1 The Post Type Chain (CRITICAL)
+
+Theme Builder data lives in **4 custom post types** linked by meta keys:
+
+```
+et_theme_builder (1 per site)
+  └── _et_template (meta, serialized array of template post IDs)
+        └── et_template (1 per template — "Default Website Template", "All Posts", etc.)
+              ├── _et_header_layout_id → et_header_layout post ID
+              ├── _et_body_layout_id   → et_body_layout post ID
+              └── _et_footer_layout_id → et_footer_layout post ID
+                    └── The actual layout posts contain Divi shortcode content in post_content
+```
+
+**Post types involved:**
+
+| Post Type | Purpose | How Many |
+|-----------|---------|----------|
+| `et_theme_builder` | Top-level container. One per site. | Exactly 1 |
+| `et_template` | A template assignment (e.g., "Default", "All Posts", "All Pages") | 1 per assignment rule |
+| `et_header_layout` | Header layout content (Divi shortcodes or JSON) | 1 per unique header |
+| `et_body_layout` | Body layout content | 1 per unique body layout |
+| `et_footer_layout` | Footer layout content | 1 per unique footer |
+
+#### 4.1.2 Step-by-Step: Finding the Global Header
+
+Follow this EXACT sequence. Do NOT skip steps or guess IDs.
+
+**Step 1: Find the Theme Builder post**
 ```bash
-# List all Theme Builder template post types
-wp post list --post_type=et_template --format=table --fields=ID,post_title,post_status 2>/dev/null
-wp post list --post_type=et_header_layout --format=table --fields=ID,post_title,post_status 2>/dev/null
-wp post list --post_type=et_body_layout --format=table --fields=ID,post_title,post_status 2>/dev/null
-wp post list --post_type=et_footer_layout --format=table --fields=ID,post_title,post_status 2>/dev/null
+wp post list --post_type=et_theme_builder --format=table --fields=ID,post_title,post_status
+```
+Result: One row. Note the ID (e.g., `264004`).
 
-# Get Theme Builder settings/assignments
+**Step 2: Get the template IDs from the Theme Builder**
+```bash
+wp post meta get <TB_ID> _et_template
+```
+This returns a **serialized PHP array** of template post IDs. If unreadable, use:
+```bash
 wp eval '
-$tb = get_option("et_template_builder_settings");
-if ($tb) {
-    echo json_encode($tb, JSON_PRETTY_PRINT) . "\n";
+$tb_id = <TB_ID>;
+$templates = get_post_meta($tb_id, "_et_template", true);
+if (is_array($templates)) {
+    foreach ($templates as $t) {
+        $title = get_the_title($t);
+        echo "Template ID: $t — Title: $title\n";
+    }
 } else {
-    // Try alternative option names
-    foreach (array("et_theme_builder_templates", "divi_theme_builder") as $key) {
-        $val = get_option($key);
-        if ($val) {
-            echo "Found in $key:\n";
-            echo json_encode($val, JSON_PRETTY_PRINT) . "\n";
-            break;
-        }
-    }
+    echo "Raw value: " . print_r($templates, true) . "\n";
 }
-'
-
-# Get global header layout ID and content
-wp eval '
-$templates = get_option("et_template_builder_settings");
-if ($templates) {
-    foreach ($templates as $id => $template) {
-        echo "Template: $id\n";
-        if (is_array($template)) {
-            foreach ($template as $area => $layout_id) {
-                echo "  $area: $layout_id\n";
-            }
-        }
-        echo "\n";
-    }
-}
-'
-
-# Export Theme Builder configuration
-wp eval '
-$config = array(
-    "templates" => get_option("et_template_builder_settings"),
-    "header_layouts" => get_posts(array("post_type" => "et_header_layout", "posts_per_page" => -1, "post_status" => "publish")),
-    "body_layouts" => get_posts(array("post_type" => "et_body_layout", "posts_per_page" => -1, "post_status" => "publish")),
-    "footer_layouts" => get_posts(array("post_type" => "et_footer_layout", "posts_per_page" => -1, "post_status" => "publish")),
-);
-file_put_contents("/tmp/theme-builder-config.json", json_encode($config, JSON_PRETTY_PRINT));
-echo "Exported Theme Builder config\n";
 '
 ```
+Result: A list like:
+```
+Template ID: 264005 — Title: Default Website Template
+Template ID: 264234 — Title: All Posts
+```
+
+**Step 3: Find which template has a header assigned**
+
+For each template ID, check if it has a header layout:
+```bash
+wp post meta get <TEMPLATE_ID> _et_header_layout_id
+```
+If this returns a numeric ID (e.g., `264002`), that template has a header. If empty or not found, that template inherits the header from a parent/default template.
+
+**To check all three layout types at once:**
+```bash
+wp eval '
+$template_id = <TEMPLATE_ID>;
+$header = get_post_meta($template_id, "_et_header_layout_id", true);
+$body = get_post_meta($template_id, "_et_body_layout_id", true);
+$footer = get_post_meta($template_id, "_et_footer_layout_id", true);
+$enabled = get_post_meta($template_id, "_et_header_layout_enabled", true);
+echo "Template: " . get_the_title($template_id) . " (ID: $template_id)\n";
+echo "  Header layout ID: " . ($header ?: "none") . " (enabled: " . ($enabled ?: "not set") . ")\n";
+echo "  Body layout ID: " . ($body ?: "none") . "\n";
+echo "  Footer layout ID: " . ($footer ?: "none") . "\n";
+'
+```
+
+**Step 4: Get the header layout content**
+```bash
+wp post get <HEADER_LAYOUT_ID> --field=post_content
+```
+This outputs the **Divi shortcode content** (Divi 4) or **JSON** (Divi 5) of the header.
+
+**Step 5: Modify the header content**
+
+For Divi 4 (shortcodes), the content is a string of `[et_pb_section]...[/et_pb_section]` shortcodes. To modify:
+```bash
+# Save current content to file for editing
+wp post get <HEADER_LAYOUT_ID> --field=post_content > /tmp/header-content.txt
+
+# Edit the file (or write new content)
+# Then update:
+wp post update <HEADER_LAYOUT_ID> /tmp/header-content.txt
+```
+
+**IMPORTANT**: Always clear Divi caches after Theme Builder changes:
+```bash
+wp eval 'et_core_clear_wp_cache("et_builder");'
+wp cache flush
+wp transient delete --all
+# If Kinsta MU plugin is present:
+wp kinsta cache purge --all 2>/dev/null
+```
+
+#### 4.1.3 Complete Theme Builder Discovery Script
+
+Run this single command to get a full picture of the entire Theme Builder configuration:
+
+```bash
+wp eval '
+// Step 1: Find the Theme Builder post
+$tb_posts = get_posts(array(
+    "post_type" => "et_theme_builder",
+    "posts_per_page" => 1,
+    "post_status" => "publish"
+));
+if (empty($tb_posts)) {
+    echo "ERROR: No et_theme_builder post found. Theme Builder may not be configured.\n";
+    exit;
+}
+$tb = $tb_posts[0];
+echo "=== THEME BUILDER ===\n";
+echo "Theme Builder Post ID: $tb->ID\n\n";
+
+// Step 2: Get all template IDs
+$template_ids = get_post_meta($tb->ID, "_et_template", true);
+if (!is_array($template_ids)) {
+    echo "ERROR: _et_template meta is not an array. Raw: " . print_r($template_ids, true) . "\n";
+    exit;
+}
+
+echo "=== TEMPLATES (" . count($template_ids) . " found) ===\n\n";
+
+// Step 3: For each template, show layout assignments
+foreach ($template_ids as $tid) {
+    $title = get_the_title($tid);
+    echo "--- Template: $title (ID: $tid) ---\n";
+
+    $header_id = get_post_meta($tid, "_et_header_layout_id", true);
+    $body_id = get_post_meta($tid, "_et_body_layout_id", true);
+    $footer_id = get_post_meta($tid, "_et_footer_layout_id", true);
+    $header_on = get_post_meta($tid, "_et_header_layout_enabled", true);
+    $body_on = get_post_meta($tid, "_et_body_layout_enabled", true);
+    $footer_on = get_post_meta($tid, "_et_footer_layout_enabled", true);
+
+    echo "  Header: " . ($header_id ? "ID $header_id" : "none") . " (enabled: " . ($header_on ?: "0") . ")\n";
+    echo "  Body:   " . ($body_id ? "ID $body_id" : "none") . " (enabled: " . ($body_on ?: "0") . ")\n";
+    echo "  Footer: " . ($footer_id ? "ID $footer_id" : "none") . " (enabled: " . ($footer_on ?: "0") . ")\n";
+
+    // Show template assignment rules
+    $use_on = get_post_meta($tid, "_et_use_on", true);
+    $exclude = get_post_meta($tid, "_et_exclude_from", true);
+    if ($use_on) echo "  Use on: " . (is_array($use_on) ? implode(", ", $use_on) : $use_on) . "\n";
+    if ($exclude) echo "  Exclude: " . (is_array($exclude) ? implode(", ", $exclude) : $exclude) . "\n";
+
+    echo "\n";
+}
+
+// Step 4: List all layout posts with content length
+echo "=== ALL LAYOUT POSTS ===\n";
+foreach (array("et_header_layout", "et_body_layout", "et_footer_layout") as $pt) {
+    $layouts = get_posts(array("post_type" => $pt, "posts_per_page" => -1, "post_status" => "any"));
+    foreach ($layouts as $l) {
+        $len = strlen($l->post_content);
+        echo "$pt ID: $l->ID — \"$l->post_title\" — Status: $l->post_status — Content: {$len} chars\n";
+    }
+}
+'
+```
+
+#### 4.1.4 Common Theme Builder Meta Keys Reference
+
+**On `et_theme_builder` post:**
+| Meta Key | Value | Description |
+|----------|-------|-------------|
+| `_et_template` | Serialized array of `et_template` post IDs | All template assignments |
+
+**On `et_template` posts:**
+| Meta Key | Value | Description |
+|----------|-------|-------------|
+| `_et_header_layout_id` | Post ID of `et_header_layout` | Header layout for this template |
+| `_et_body_layout_id` | Post ID of `et_body_layout` | Body layout for this template |
+| `_et_footer_layout_id` | Post ID of `et_footer_layout` | Footer layout for this template |
+| `_et_header_layout_enabled` | `1` or `0` | Whether the header is active |
+| `_et_body_layout_enabled` | `1` or `0` | Whether the body layout is active |
+| `_et_footer_layout_enabled` | `1` or `0` | Whether the footer is active |
+| `_et_use_on` | Serialized array | Pages/post types this template applies to |
+| `_et_exclude_from` | Serialized array | Pages/post types excluded from this template |
+| `_et_default` | `1` or empty | Whether this is the default (global) template |
+
+**On layout posts (`et_header_layout`, `et_body_layout`, `et_footer_layout`):**
+| Field | Content |
+|-------|---------|
+| `post_content` | The Divi layout (shortcodes in Divi 4, JSON in Divi 5) |
+| `post_title` | Layout name (e.g., "Global Header") |
+| `post_status` | Usually `publish` |
+
+#### 4.1.5 Recipes for Common Theme Builder Tasks
+
+**Find and edit the Global Header:**
+```bash
+# One-liner: Get the global header content
+wp eval '
+$tb = get_posts(array("post_type"=>"et_theme_builder","posts_per_page"=>1,"post_status"=>"publish"));
+$templates = get_post_meta($tb[0]->ID, "_et_template", true);
+foreach ($templates as $tid) {
+    if (get_post_meta($tid, "_et_default", true)) {
+        $hid = get_post_meta($tid, "_et_header_layout_id", true);
+        if ($hid) {
+            echo "Global Header Layout ID: $hid\n";
+            echo "Content:\n" . get_post_field("post_content", $hid) . "\n";
+        }
+    }
+}
+'
+```
+
+**Find and edit the Global Footer:**
+```bash
+wp eval '
+$tb = get_posts(array("post_type"=>"et_theme_builder","posts_per_page"=>1,"post_status"=>"publish"));
+$templates = get_post_meta($tb[0]->ID, "_et_template", true);
+foreach ($templates as $tid) {
+    if (get_post_meta($tid, "_et_default", true)) {
+        $fid = get_post_meta($tid, "_et_footer_layout_id", true);
+        if ($fid) {
+            echo "Global Footer Layout ID: $fid\n";
+            echo "Content:\n" . get_post_field("post_content", $fid) . "\n";
+        }
+    }
+}
+'
+```
+
+**Find header for a specific page (with template inheritance):**
+```bash
+wp eval '
+$page_id = <PAGE_ID>;
+$tb = get_posts(array("post_type"=>"et_theme_builder","posts_per_page"=>1,"post_status"=>"publish"));
+$templates = get_post_meta($tb[0]->ID, "_et_template", true);
+$default_header = null;
+$specific_header = null;
+
+foreach ($templates as $tid) {
+    $hid = get_post_meta($tid, "_et_header_layout_id", true);
+    $enabled = get_post_meta($tid, "_et_header_layout_enabled", true);
+    if (!$hid || !$enabled) continue;
+
+    if (get_post_meta($tid, "_et_default", true)) {
+        $default_header = $hid;
+    }
+    $use_on = get_post_meta($tid, "_et_use_on", true);
+    if (is_array($use_on) && in_array($page_id, $use_on)) {
+        $specific_header = $hid;
+    }
+}
+
+$active = $specific_header ?: $default_header;
+if ($active) {
+    echo "Active header for page $page_id: Layout ID $active\n";
+} else {
+    echo "No Theme Builder header found for page $page_id\n";
+}
+'
+```
+
+**Edit a specific element in a header (e.g., remove a button):**
+```bash
+# 1. Get the header content
+wp post get <HEADER_LAYOUT_ID> --field=post_content > /tmp/header.txt
+
+# 2. View the content to find what to change
+cat /tmp/header.txt
+
+# 3. Use sed/string replacement to modify (example: remove a phone button module)
+# Find the et_pb_button module containing the text to remove, then delete that module block
+# For precise edits, use wp eval with str_replace:
+
+wp eval '
+$hid = <HEADER_LAYOUT_ID>;
+$content = get_post_field("post_content", $hid);
+
+// Example: Remove a button module containing "Call Now"
+$pattern = "/\[et_pb_button[^\]]*\]Call Now\[\/et_pb_button\]/s";
+$content = preg_replace($pattern, "", $content);
+
+// Or simple string replacement
+$content = str_replace("Call Now", "Contact Us", $content);
+
+wp_update_post(array("ID" => $hid, "post_content" => $content));
+echo "Header updated.\n";
+'
+
+# 4. ALWAYS clear caches after updating
+wp cache flush
+wp transient delete --all
+```
+
+**List ALL templates with their assignments in human-readable form:**
+```bash
+wp eval '
+$tb = get_posts(array("post_type"=>"et_theme_builder","posts_per_page"=>1,"post_status"=>"publish"));
+if (empty($tb)) { echo "No Theme Builder found.\n"; exit; }
+$templates = get_post_meta($tb[0]->ID, "_et_template", true);
+if (!is_array($templates)) { echo "No templates.\n"; exit; }
+
+foreach ($templates as $tid) {
+    $t = get_post($tid);
+    if (!$t) continue;
+    $is_default = get_post_meta($tid, "_et_default", true);
+    echo ($is_default ? "[DEFAULT] " : "") . $t->post_title . " (ID: $tid)\n";
+
+    foreach (array("header" => "_et_header_layout_id", "body" => "_et_body_layout_id", "footer" => "_et_footer_layout_id") as $area => $meta) {
+        $lid = get_post_meta($tid, $meta, true);
+        $enabled = get_post_meta($tid, str_replace("_id", "_enabled", $meta), true);
+        if ($lid) {
+            $ltitle = get_the_title($lid);
+            echo "  $area: $ltitle (ID: $lid, enabled: " . ($enabled ? "yes" : "no") . ")\n";
+        }
+    }
+    echo "\n";
+}
+'
+```
+
+#### 4.1.6 Troubleshooting Theme Builder Navigation
+
+**Problem: `wp post list --post_type=et_template` returns nothing**
+- The `et_template` post type is registered only when Divi is active. Check: `wp theme list --status=active`
+- Try: `wp post list --post_type=et_template --post_status=any` (templates may not be "publish")
+
+**Problem: `_et_template` meta returns empty**
+- The Theme Builder may not have been configured yet (default Divi install with no templates)
+- Check if `et_theme_builder` post exists at all: `wp post list --post_type=et_theme_builder --post_status=any`
+
+**Problem: Header layout ID exists but content is empty**
+- The layout may have been created but never had content added
+- Check: `wp post get <ID> --field=post_content | wc -c` (0 chars = empty)
+
+**Problem: Changes to header don't appear on frontend**
+- Clear ALL caches (Divi static CSS, object cache, page cache, CDN):
+  ```bash
+  wp eval 'et_core_clear_wp_cache("et_builder");' 2>/dev/null
+  wp cache flush
+  wp transient delete --all
+  wp kinsta cache purge --all 2>/dev/null
+  ```
+- Check if the template's `_et_header_layout_enabled` is `1`
+- Check if there's a more specific template overriding the default
+
+**Problem: Multiple templates exist — which one applies?**
+- Divi uses specificity: Page-specific > Post-type > Category > Default
+- `_et_default=1` marks the global fallback template
+- `_et_use_on` contains specific page IDs or post type rules
+- Run the full discovery script (4.1.3) to see all assignments
+
+#### 4.1.7 Important Caveats
+
+1. **NEVER use `et_template_builder_settings` option** — this is an outdated/unreliable approach. The post-type + meta-key chain described above is the canonical data structure.
+2. **The `et_theme_builder` post type is singular** — there should be exactly one per site.
+3. **Layout posts can be shared** — multiple templates can reference the same header layout ID. Changing one header changes it everywhere it's used.
+4. **Divi 4 vs Divi 5 content format**: Header/body/footer layout `post_content` contains shortcodes in Divi 4 and JSON in Divi 5. Always check the Divi version first (see "Detecting Divi Version" section).
+5. **Custom headers via PHP**: Some sites bypass Theme Builder entirely and inject headers via `wp_body_open` or `wp_head` hooks in the child theme. If `_et_header_layout_id` is empty or the header layout content doesn't match what's on the frontend, check `functions.php` for hook-based header injection.
+6. **Theme Builder templates don't use `_et_template_builder_settings` option** — this is a common misconception. The data lives in post meta, not wp_options.
 
 ### 4.2 Dynamic Content Fields (Divi 5)
 
@@ -2253,7 +2561,21 @@ foreach ($template_types as $type) {
         );
     }
 }
-$export["settings"] = get_option("et_template_builder_settings");
+// Include template assignments via post meta chain (not wp_options)
+$tb = get_posts(array("post_type" => "et_theme_builder", "posts_per_page" => 1, "post_status" => "publish"));
+if (!empty($tb)) {
+    $template_ids = get_post_meta($tb[0]->ID, "_et_template", true);
+    $export["templates"] = array();
+    if (is_array($template_ids)) {
+        foreach ($template_ids as $tid) {
+            $export["templates"][] = array(
+                "id" => $tid,
+                "title" => get_the_title($tid),
+                "meta" => get_post_meta($tid)
+            );
+        }
+    }
+}
 file_put_contents("/tmp/theme-builder-export.json", json_encode($export, JSON_PRETTY_PRINT));
 echo "Theme Builder exported\n";
 '

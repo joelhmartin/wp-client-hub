@@ -107,3 +107,153 @@ Changes to these areas should always be mirrored:
 - `src/lib/terminal-manager.ts` — no equivalent online
 - Claude CLI-specific logic (system prompts, PTY spawning)
 - File upload to PTY (online version handles file attachments differently)
+
+
+## Chrome Extension Workflow
+
+When using the Claude Chrome extension (MCP), follow these rules to preserve context and avoid token waste.
+
+### Full-Page Screenshots (No Scroll-and-Stitch)
+
+**Never** perform sequential scroll + screenshot operations to visually test a page. Use the full-page capture approach instead — this saves significant tokens and produces the same accuracy.
+
+```javascript
+// full-page-screenshot.js — Run via Chrome DevTools Protocol
+// Captures entire page in one shot instead of scroll+stitch
+(async () => {
+  const { height } = await new Promise(resolve => {
+    const body = document.body;
+    const html = document.documentElement;
+    const h = Math.max(
+      body.scrollHeight, body.offsetHeight,
+      html.clientHeight, html.scrollHeight, html.offsetHeight
+    );
+    resolve({ height: h });
+  });
+  window.__FULL_PAGE_HEIGHT = height;
+  window.scrollTo(0, 0);
+})();
+```
+
+Use `screenshot` with `fullPage: true` if supported, or capture at the calculated `__FULL_PAGE_HEIGHT` viewport. Do **not** scroll incrementally and stitch.
+
+### Targeted DOM Extraction (No Bulk HTML Loading)
+
+**Never** load all HTML inside `<main>` or `<body>` for a simple task. Instead:
+
+1. Identify the **specific selector(s)** relevant to the task.
+2. Extract **only** those elements using targeted queries.
+3. Limit extracted content to the minimum needed.
+
+**Bad:** `document.querySelector('main').innerHTML` (loads everything, bloats context)
+**Good:** `document.querySelector('.hero-section').innerHTML` (loads only what's needed)
+
+Rules:
+- For content checks, extract only the specific `div`, `section`, or component.
+- For form testing, extract only the `form` and its children.
+- For navigation testing, extract only `nav` or `header`.
+- Never extract more than 2–3 targeted sections in a single operation.
+
+### Dismiss Cookie Banners & Pop-ups Automatically
+
+Before interacting with any website content, **always** run the pop-up dismissal script first. Do not use screenshot-and-scroll sequences to find and close banners.
+
+```javascript
+// dismiss-popups.js — Run on every new page load before main tasks
+(() => {
+  const selectors = [
+    '[id*="cookie"] button', '[class*="cookie"] button',
+    '[id*="consent"] button', '[class*="consent"] button',
+    '[class*="banner"] button', '[id*="banner"] button',
+    'button[class*="accept"]', 'button[id*="accept"]',
+    'a[class*="accept"]', 'button[class*="agree"]',
+    'button[id*="agree"]', 'button[class*="allow"]',
+    'button[id*="allow"]', 'button[class*="dismiss"]',
+    'button[class*="close-banner"]', '[class*="cookie-notice"] button',
+    '[class*="gdpr"] button', '[id*="gdpr"] button',
+    '[class*="privacy-banner"] button',
+    '[data-testid*="cookie"] button', '[data-testid*="consent"] button',
+    '[aria-label*="accept cookies"]', '[aria-label*="Accept cookies"]',
+    '[aria-label*="close"]', '[aria-label*="dismiss"]',
+    '.modal-backdrop', '[class*="overlay"][class*="cookie"]',
+    '[class*="popup"] [class*="close"]', '[class*="modal"] [class*="close"]',
+  ];
+  const clickPatterns = [
+    /accept\s*(all)?/i, /agree/i, /allow\s*(all)?/i,
+    /got\s*it/i, /ok(ay)?/i, /I\s*understand/i,
+    /continue/i, /dismiss/i, /close/i,
+  ];
+  for (const sel of selectors) {
+    try {
+      document.querySelectorAll(sel).forEach(el => {
+        if (el.offsetParent !== null) el.click();
+      });
+    } catch (e) {}
+  }
+  const allButtons = document.querySelectorAll('button, a[role="button"], [class*="btn"]');
+  for (const btn of allButtons) {
+    const text = (btn.textContent || '').trim();
+    if (clickPatterns.some(p => p.test(text)) && btn.offsetParent !== null) {
+      btn.click();
+      break;
+    }
+  }
+  document.querySelectorAll('[class*="cookie-overlay"], [class*="consent-overlay"], [id*="cookie-overlay"]').forEach(el => el.remove());
+  document.querySelectorAll('[class*="cookie"], [class*="consent"], [id*="cookie"], [id*="consent"]').forEach(el => {
+    const style = window.getComputedStyle(el);
+    if (style.position === 'fixed' || style.position === 'sticky') el.remove();
+  });
+})();
+```
+
+### Authentication & CAPTCHAs
+
+Claude **cannot** complete CAPTCHAs or log in on your behalf. Before assigning any task on a site that requires authentication:
+
+1. Open the target site in Chrome manually.
+2. Complete any login or CAPTCHA verification.
+3. Ensure the session is active and authenticated.
+4. **Then** give Claude the task.
+
+If Claude encounters a CAPTCHA or login wall during a task, stop and inform the user immediately.
+
+### Context Window Management
+
+Browser operations consume significantly more context than regular tool calls:
+- If context is above **60%**, run a compact before proceeding.
+- If context reaches **75%** during a task, pause, document progress, and compact before continuing.
+- Minimize unnecessary screenshots — use full-page capture when possible.
+- Extract only targeted DOM elements, never bulk HTML.
+- Dismiss pop-ups via script, not interactively.
+
+### Testing Workflow
+
+**Test file format:**
+```markdown
+# Test: [Feature/Area Name]
+## Priority: [Critical / High / Medium / Low]
+## Test Steps
+### Step 1: [Action Description]
+- **Action:** [What to do]
+- **Expected Result:** [What should happen]
+```
+
+**Test report format:**
+```markdown
+# Test Report: [Feature/Area Name]
+**Date:** [timestamp] | **Status:** [Pass / Fail / Partial]
+## Results Summary
+| Step | Description | Status | Notes |
+|------|-------------|--------|-------|
+| 1 | [desc] | Pass/Fail | [notes] |
+## Issues Found
+- **Issue 1:** [description, severity, reproduction steps]
+```
+
+### Chrome Extension Reminders
+
+- **Chrome only** — does not work with other Chromium browsers.
+- **Chrome profiles** — may open the wrong profile. Close Chrome, open correct profile, then retry.
+- **Long-running tasks** — Manifest V3 can block extensions that run too long. Break work into smaller test runs.
+- **Always document before compacting** — generate a progress report first.
+- **Console logs** — check the browser console for errors that aren't visually apparent.
