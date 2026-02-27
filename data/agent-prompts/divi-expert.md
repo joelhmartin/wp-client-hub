@@ -505,6 +505,156 @@ foreach ($pages as $page) {
 '
 ```
 
+### 1.16 Divi 4 Global Presets and Global Colors
+
+**Divi 4 HAS its own preset system** (introduced in v4.5). This is separate from Divi 5's Design Variables/Presets.
+
+**Global Presets (Divi 4):**
+```bash
+# Read all Divi 4 global presets
+wp option get et_builder_global_presets --format=json 2>/dev/null | python3 -m json.tool | head -80
+
+# Structure: { "et_pb_text": { "_initial": { ...attrs }, "preset-uuid-1": { "name": "My Preset", ...attrs } } }
+# Each module slug has an "_initial" key (the default) plus named presets
+
+# Check for legacy Module Customizer Defaults (pre-4.5, still present on some sites)
+wp option get et_builder_custom_defaults --format=json 2>/dev/null | head -40
+
+# Preset version history (undo/redo snapshots)
+wp option get et_builder_global_presets_history --format=json 2>/dev/null | head -20
+```
+
+**Global Colors (Divi 4):**
+
+Divi 4's Global Colors appear in the color picker across the builder. They're stored as an array of `{id, color}` objects.
+
+```bash
+# Read global colors
+wp eval '
+$colors = get_option("et_builder_global_colors");
+if ($colors) {
+    foreach ($colors as $c) {
+        echo "ID: {$c["id"]} — Color: {$c["color"]}\n";
+    }
+} else {
+    echo "No global colors configured.\n";
+}
+'
+
+# Add a global color
+wp eval '
+$colors = get_option("et_builder_global_colors") ?: array();
+$colors[] = array("id" => "gcid-" . wp_generate_uuid4(), "color" => "#2563eb");
+update_option("et_builder_global_colors", $colors);
+echo "Added global color. Total: " . count($colors) . "\n";
+'
+```
+
+**How modules reference Global Colors:** In attribute values, the `gcid-{uuid}` syntax replaces the hex color:
+```
+[et_pb_button button_bg_color="gcid-abc12345-def6-7890-ghij-klmnopqrstuv" ...]
+```
+When you see `gcid-*` in shortcode content, that's a Global Color reference.
+
+### 1.17 Critical Post Meta Keys (Divi 4)
+
+These post meta keys control Divi behavior on individual pages/posts:
+
+| Meta Key | Values | Description |
+|----------|--------|-------------|
+| `_et_pb_use_builder` | `on` / `off` | Whether Divi Builder is active on this post |
+| `_et_pb_page_layout` | `et_full_width_page`, `et_no_sidebar`, `et_right_sidebar`, `et_left_sidebar` | Page layout template |
+| `_et_pb_show_title` | `on` / `off` | Show/hide page title above Divi content |
+| `_et_pb_post_hide_nav` | `on` / `off` | Hide default Divi nav on this page |
+| `_et_pb_side_nav` | `on` / `off` | Show/hide side navigation |
+| `_et_pb_old_content` | HTML string | Pre-Divi content backup (classic editor content before builder was enabled) |
+| `_et_pb_custom_css_before` | CSS string | Custom CSS for `::before` pseudo-element on this page |
+| `_et_pb_custom_css_main_element` | CSS string | Custom CSS for the main content element on this page |
+| `_et_pb_custom_css_after` | CSS string | Custom CSS for `::after` pseudo-element on this page |
+| `_et_pb_first_image` | URL | First image found in Divi content (used for social sharing/archives) |
+| `_et_pb_truncate_post` | string | Controls excerpt truncation in blog modules |
+| `_et_pb_gutter_width` | number (1-4) | Per-page gutter width override |
+| `_et_pb_content_area_background_color` | hex color | Per-page content area background |
+| `_et_pb_section_background_color` | hex color | Per-page section default background |
+| `_et_pb_ab_testing_active` | `on` / `off` | Whether Divi A/B testing (Leads) is active |
+| `_et_pb_ab_subjects` | serialized array | Subject module IDs for A/B test |
+| `_et_pb_ab_goal_module` | module ID | Goal module for A/B test conversion tracking |
+
+```bash
+# Get all Divi meta for a post
+wp post meta list <POST_ID> --format=table 2>/dev/null | grep "_et_pb\|_et_"
+
+# Check critical page settings
+wp eval '
+$id = <POST_ID>;
+$keys = array("_et_pb_use_builder", "_et_pb_page_layout", "_et_pb_show_title", "_et_pb_post_hide_nav");
+foreach ($keys as $k) {
+    echo "$k: " . (get_post_meta($id, $k, true) ?: "not set") . "\n";
+}
+'
+
+# Disable a stuck A/B test
+wp post meta update <POST_ID> _et_pb_ab_testing_active off
+wp transient delete --all
+```
+
+### 1.18 Divi Code Module Gotchas
+
+The Code module (`et_pb_code`, `et_pb_fullwidth_code`) inserts raw HTML/JS/CSS into the page. It has critical gotchas:
+
+**1. Line Wrapping at ~150 chars:** The Divi Visual Builder wraps long lines in Code modules, inserting real newlines into stored content. This breaks JavaScript string literals (especially SVGs, URLs, inline HTML).
+- **Mitigation:** Keep all JS strings under ~70 chars using string concatenation (`+`)
+- **Safe pattern:**
+  ```javascript
+  var svg = '<svg xmlns="http://www.w3.org/' +
+    '2000/svg" width="24" height="24">' +
+    '<path d="M12 2L2 22h20z"/></svg>';
+  ```
+
+**2. Internal Line Break Encoding:** Divi stores newlines as `<!-- [et_pb_line_break_holder] -->` in the database.
+
+**3. Smart Quote Corruption:** `wptexturize` converts straight quotes to smart quotes in stored content. Use HTML entities (`&#8217;` for apostrophe, `&#8221;` for right double quote) instead of Unicode escapes.
+
+**4. jQuery Dependency:** Divi loads jQuery, but Code module scripts may fire before jQuery is ready. Always wrap in `jQuery(document).ready()` or use vanilla JS.
+
+**5. Script Execution Order:** Scripts in Code modules execute during page render in DOM order. If a script depends on a framework (like a quiz engine), the framework must load in `<head>` (via `functions.php` enqueue, not footer) so it exists before inline scripts in the page body.
+
+**6. Safe Update Method:** To update Code Module content without re-wrapping, use `wp post update <POST_ID> /tmp/content-file.txt` via WP-CLI. Never use the Visual Builder to edit code-heavy Code Modules — it will re-wrap lines.
+
+### 1.19 Key wp_options Keys Reference
+
+| Option Key | Description |
+|------------|-------------|
+| `et_divi` | Main Divi theme options (array — logo, colors, fonts, header style, footer, everything) |
+| `et_builder_global_colors` | Divi 4 Global Colors (array of `{id, color}` objects) |
+| `et_builder_global_presets` | Divi 4 Global Presets per module type |
+| `et_builder_global_presets_history` | Preset undo/redo history |
+| `et_builder_custom_defaults` | Legacy Module Customizer Defaults (pre-4.5) |
+| `et_builder_bfb_enabled` | Backend Framework Builder enabled (`on`/`off`) |
+| `et_builder_enable_latest_framework` | Use latest Divi framework version |
+| `et_divi_version` | Installed Divi version string |
+| `et_builder_google_api_key` | Google Maps API key for Map module |
+| `et_core_api_spam_recaptcha_site_key` | reCAPTCHA v3 site key for Divi contact forms |
+| `et_core_api_spam_recaptcha_secret_key` | reCAPTCHA v3 secret key |
+| `et_core_api_email_mailchimp` | Mailchimp API key for Email Optin module |
+| `et_core_api_email_convertkit` | ConvertKit API key |
+| `et_core_api_email_activecampaign` | ActiveCampaign API credentials |
+| `et_pb_static_css_file` | Enable static CSS file generation (`on`/`off`) |
+| `et_pb_css_in_footer` | Load CSS in footer (`on`/`off`) |
+| `et_pb_enable_dynamic_css` | Dynamic CSS (only load used module CSS) |
+| `et_pb_enable_dynamic_icons` | Dynamic icon loading |
+| `et_pb_css_synced` | CSS cache sync status |
+| `et_safe_mode` | Divi Safe Mode active (`on`/`off`) |
+| `et_automatic_updates_options` | Auto-update config (ET account username/API key) |
+| `et_builder_page_creation_flow` | Default page creation mode |
+| `et_builder_design_variables` | Divi 5 Design Variables |
+| `et_builder_presets` | Divi 5 Presets (Element + OG) |
+
+```bash
+# Quick dump of all Divi-related options
+wp db query "SELECT option_name FROM $(wp db prefix 2>/dev/null)options WHERE option_name LIKE 'et_%' OR option_name LIKE 'divi_%' ORDER BY option_name;" 2>/dev/null
+```
+
 ---
 
 ## PART TWO: DIVI 5 ARCHITECTURE (JSON/Block-Based)
@@ -2056,6 +2206,253 @@ Available dynamic content fields for Theme Builder templates:
 | `current_date` | Today's date | Any text field |
 | `custom_field:{key}` | Any ACF/custom field | Varies by field type |
 
+### 4.3 Traditional Header/Footer System (Non-Theme Builder)
+
+**IMPORTANT**: Most Divi 4 sites (especially older ones) use Divi's built-in header/footer system controlled via Theme Options, NOT the Theme Builder. Always check which system is in use before modifying headers/footers.
+
+**How to detect which header system is active:**
+```bash
+wp eval '
+$tb = get_posts(array("post_type" => "et_theme_builder", "posts_per_page" => 1, "post_status" => "publish"));
+if (empty($tb)) {
+    echo "TRADITIONAL header system (no Theme Builder configured)\n";
+    exit;
+}
+$templates = get_post_meta($tb[0]->ID, "_et_template", true);
+$has_tb_header = false;
+if (is_array($templates)) {
+    foreach ($templates as $tid) {
+        $hid = get_post_meta($tid, "_et_header_layout_id", true);
+        $enabled = get_post_meta($tid, "_et_header_layout_enabled", true);
+        if ($hid && $enabled) { $has_tb_header = true; break; }
+    }
+}
+echo $has_tb_header ? "THEME BUILDER header system\n" : "TRADITIONAL header system (Theme Builder exists but no header assigned)\n";
+'
+```
+
+Also check if the site uses a **custom PHP header** (injected via hooks in child theme):
+```bash
+# Check child theme functions.php for header hooks
+wp eval '
+$child = get_stylesheet_directory();
+$functions = file_get_contents($child . "/functions.php");
+$hooks = array("wp_body_open", "wp_head", "et_html_main_header", "et_header_top", "et_html_top_header");
+foreach ($hooks as $hook) {
+    if (strpos($functions, $hook) !== false) {
+        echo "FOUND hook: $hook in functions.php — possible custom header injection\n";
+    }
+}
+// Also check for custom header template files
+foreach (array("header.php", "template-parts/custom-nav.php", "template-parts/header.php") as $f) {
+    if (file_exists($child . "/" . $f)) {
+        echo "FOUND template: $f in child theme\n";
+    }
+}
+'
+```
+
+**Header Styles** (`et_divi[header_style]`):
+
+| Value | Style | Description |
+|-------|-------|-------------|
+| `left` | Default | Logo left, navigation right |
+| `centered` | Centered | Logo centered above navigation |
+| `centered-inline-logo` | Centered Inline | Logo centered within the navigation bar |
+| `slide-in` | Slide-In | Hamburger menu, navigation slides in from side |
+| `fullscreen` | Fullscreen | Hamburger menu, navigation overlays full screen |
+
+```bash
+# Read header style
+wp eval '
+$opts = get_option("et_divi");
+echo "Header style: " . ($opts["header_style"] ?? "left (default)") . "\n";
+echo "Logo: " . ($opts["logo"] ?? "not set") . "\n";
+echo "Fixed nav: " . ($opts["fixed_nav"] ?? "on") . "\n";
+echo "Hide nav: " . ($opts["hide_nav"] ?? "off") . "\n";
+echo "Fullwidth nav: " . ($opts["nav_fullwidth"] ?? "off") . "\n";
+echo "Primary nav bg: " . ($opts["primary_nav_bg"] ?? "not set") . "\n";
+echo "Primary nav text: " . ($opts["primary_nav_text_color_new"] ?? "not set") . "\n";
+echo "Fixed nav logo: " . ($opts["fixed_nav_logo"] ?? "not set") . "\n";
+echo "Dropdown animation: " . ($opts["primary_nav_dropdown_animation"] ?? "default") . "\n";
+'
+```
+
+**Secondary Header (Top Bar):**
+```bash
+wp eval '
+$opts = get_option("et_divi");
+echo "Phone: " . ($opts["phone_number"] ?? "not set") . "\n";
+echo "Email: " . ($opts["header_email"] ?? "not set") . "\n";
+echo "Social icons: " . ($opts["show_header_social_icons"] ?? "off") . "\n";
+'
+```
+
+**Traditional Footer Configuration:**
+```bash
+wp eval '
+$opts = get_option("et_divi");
+echo "Footer columns: " . ($opts["footer_columns"] ?? "4") . "\n";
+echo "Footer bg: " . ($opts["footer_bg"] ?? "not set") . "\n";
+echo "Footer social: " . ($opts["show_footer_social_icons"] ?? "off") . "\n";
+echo "Custom credits: " . ($opts["custom_footer_credits"] ?? "not set") . "\n";
+echo "Disable credits: " . ($opts["disable_custom_footer_credits"] ?? "off") . "\n";
+echo "Bottom bar bg: " . ($opts["bottom_bar_bg_color"] ?? "not set") . "\n";
+echo "Bottom bar text: " . ($opts["bottom_bar_text_color"] ?? "not set") . "\n";
+'
+
+# Update footer credits
+wp eval '
+$opts = get_option("et_divi");
+$opts["custom_footer_credits"] = "© " . date("Y") . " Company Name. All rights reserved.";
+$opts["disable_custom_footer_credits"] = "on";
+update_option("et_divi", $opts);
+echo "Footer credits updated.\n";
+'
+```
+
+---
+
+## PART 4B: PHP HOOKS AND FILTERS
+
+Divi provides an extensive hook system. When writing code in child theme `functions.php` or custom plugins, these are the hooks that modify Divi behavior.
+
+### 4B.1 Theme Layout Hooks (Actions)
+
+These fire at specific points in the page structure:
+
+| Hook | Where It Fires | Common Use |
+|------|----------------|------------|
+| `et_header_top` | Top of the header area | Add top bar content, announcement banners |
+| `et_html_top_header` | Inside the secondary (top) header bar | Add phone/email/social to top bar |
+| `et_html_main_header` | Inside the main header area | Inject custom nav, logo modifications |
+| `et_html_slide_header` | Inside the slide-in header | Customize slide-in nav content |
+| `et_before_main_content` | Before the main content area | Add breadcrumbs, page-wide banners |
+| `et_after_main_content` | After the main content area | Add footer CTAs, related content |
+| `et_before_page_contents` | Before page content renders | Page-specific pre-content injection |
+| `et_after_page_contents` | After page content renders | Page-specific post-content |
+| `et_before_content_area` | Before the content area wrapper | Wrapper modifications |
+
+**Example: Inject a custom announcement bar above the header**
+```php
+add_action('et_header_top', function() {
+    echo '<div class="announcement-bar" style="background:#e74c3c;color:#fff;text-align:center;padding:10px;">
+        Special offer: 20% off all services this month!
+    </div>';
+});
+```
+
+### 4B.2 Builder Module Hooks
+
+| Hook | Type | Description |
+|------|------|-------------|
+| `et_builder_ready` | Action | Fires when builder framework is loaded. Register custom modules here. |
+| `et_builder_modules_loaded` | Action | Fires after all built-in modules are loaded |
+| `et_fb_enabled_for_post` | Filter | Controls whether Visual Builder works on a post. Return `false` to disable. |
+| `et_builder_post_types` | Filter | Controls which post types support the Divi Builder |
+| `et_builder_module_shortcode_attributes` | Filter | Modify ANY module's attributes at render time |
+| `et_builder_module_{$slug}_shortcode_attributes` | Filter | Modify a specific module's attributes (e.g., `et_builder_module_et_pb_text_shortcode_attributes`) |
+| `et_module_shortcode_output` | Filter | Modify the final HTML output of any module |
+| `et_pb_module_content` | Filter | Modify module content before rendering |
+| `et_pb_all_fields_unprocessed_{$slug}` | Filter | Add custom fields to an existing module |
+| `et_builder_custom_icon_sets` | Filter | Add custom icon sets to the icon picker |
+| `et_builder_get_parent_modules` | Filter | Modify available parent modules list |
+| `et_builder_get_child_modules` | Filter | Modify available child modules list |
+| `et_required_module_assets` | Filter | Control which module assets are loaded |
+
+**Example: Force all text modules to have a specific class**
+```php
+add_filter('et_builder_module_et_pb_text_shortcode_attributes', function($attrs) {
+    $existing = $attrs['module_class'] ?? '';
+    $attrs['module_class'] = trim($existing . ' custom-text-class');
+    return $attrs;
+});
+```
+
+**Example: Disable Visual Builder on certain post types**
+```php
+add_filter('et_builder_post_types', function($types) {
+    return array_diff($types, array('product')); // Remove WooCommerce products
+});
+```
+
+### 4B.3 Theme Options Hooks
+
+| Hook | Type | Description |
+|------|------|-------------|
+| `et_get_option` | Filter | Modify any Divi theme option value at runtime |
+| `et_epanel_save_data` | Action | Fires when Theme Options are saved |
+| `et_core_cache_dir` | Filter | Change the Divi cache directory |
+| `et_builder_main_css_file_path` | Filter | Change where Divi loads its main CSS |
+| `et_builder_enable_jquery_body` | Filter | Control jQuery loading behavior |
+| `et_builder_inner_content_class` | Filter | Modify inner content wrapper classes |
+
+**Example: Override a theme option dynamically**
+```php
+add_filter('et_get_option', function($value, $option_name) {
+    if ($option_name === 'accent_color') {
+        return '#2563eb'; // Force accent color
+    }
+    return $value;
+}, 10, 2);
+```
+
+**Example: Add custom fonts to Divi's font picker**
+```php
+add_filter('et_builder_google_fonts', function($fonts) {
+    $fonts['Custom Font'] = array(
+        'styles'      => '400,700',
+        'character_sets' => 'latin',
+        'type'        => 'sans-serif',
+    );
+    return $fonts;
+});
+```
+
+---
+
+## PART 4C: WOOCOMMERCE + DIVI
+
+### WooCommerce Module Reference
+
+Divi includes dedicated WooCommerce modules for building custom product/shop pages:
+
+| Shortcode (Divi 4) | Module Name | Key Attributes |
+|---------------------|-------------|----------------|
+| `et_pb_shop` | Shop / Product Grid | `type` (recent/featured/sale/best_selling), `posts_number`, `include_categories`, `columns_number` |
+| `et_pb_wc_title` | Product Title | For Theme Builder product templates |
+| `et_pb_wc_price` | Product Price | Includes sale price styling |
+| `et_pb_wc_description` | Product Description | Short or full description |
+| `et_pb_wc_images` | Product Images | Gallery with lightbox |
+| `et_pb_wc_add_to_cart` | Add to Cart | Button + quantity selector |
+| `et_pb_wc_rating` | Star Rating | Average rating display |
+| `et_pb_wc_reviews` | Product Reviews | Review list + form |
+| `et_pb_wc_tabs` | Product Tabs | Description, additional info, reviews tabs |
+| `et_pb_wc_related_products` | Related Products | Related product grid |
+| `et_pb_wc_upsells` | Upsell Products | Upsell grid |
+| `et_pb_wc_cross_sells` | Cross-Sells | Cart cross-sell grid |
+| `et_pb_wc_meta` | Product Meta | SKU, categories, tags |
+| `et_pb_wc_stock` | Stock Status | In stock / out of stock |
+| `et_pb_wc_additional_info` | Additional Info | Product attributes table |
+| `et_pb_wc_breadcrumb` | Breadcrumbs | WooCommerce breadcrumbs |
+| `et_pb_wc_cart_notice` | Cart Notices | Cart notification messages |
+
+**Building a custom product page with Theme Builder:**
+1. Create a new template in Theme Builder assigned to "All Products" (or specific product categories)
+2. Set a custom body layout containing the WooCommerce modules above
+3. The modules automatically pull data from the current product context
+
+```bash
+# Check for WooCommerce + Divi integration
+wp eval '
+echo "WooCommerce active: " . (class_exists("WooCommerce") ? "Yes, v" . WC_VERSION : "No") . "\n";
+echo "Divi WC support: " . (function_exists("et_builder_wc_get_modules") ? "Yes" : "Check version") . "\n";
+$opts = get_option("et_divi");
+$wc_keys = array_filter(array_keys($opts ?? []), function($k) { return strpos($k, "woocommerce") !== false; });
+foreach ($wc_keys as $k) { echo "  $k: " . $opts[$k] . "\n"; }
+'
+```
+
 ---
 
 ## PART FIVE: DIVI THEME OPTIONS VIA WP-CLI
@@ -2436,6 +2833,263 @@ textarea.et_pb_contact_form_input { }
 
 ---
 
+## PART 7B: ADVANCED STYLING REFERENCE
+
+### 7B.1 Box Shadow Presets
+
+| `box_shadow_style` Value | Description |
+|--------------------------|-------------|
+| `none` | No shadow |
+| `preset1` | Small subtle bottom shadow |
+| `preset2` | Medium bottom shadow |
+| `preset3` | Large diffuse shadow |
+| `preset4` | Inner/inset shadow |
+| `preset5` | Double shadow effect |
+| `preset6` | Large lifted shadow |
+| `preset7` | Heavy bottom shadow |
+
+Custom shadow attributes: `box_shadow_horizontal`, `box_shadow_vertical`, `box_shadow_blur`, `box_shadow_spread`, `box_shadow_color`, `box_shadow_position` (`outer`/`inner`).
+
+### 7B.2 Text Shadow
+
+`text_shadow_style` accepts the same preset values as box shadow. Custom: `text_shadow_horizontal_length`, `text_shadow_vertical_length`, `text_shadow_blur_strength`, `text_shadow_color`.
+
+### 7B.3 Transform Options
+
+Available on any module, row, or section:
+
+| Attribute | Format | Example |
+|-----------|--------|---------|
+| `transform_scale` | percentage | `100%`, `150%` |
+| `transform_translate` | `X\|Y` | `0px\|0px`, `10px\|-20px` |
+| `transform_rotate` | `X\|Y\|Z` (degrees) | `0deg\|0deg\|45deg` |
+| `transform_skew` | `X\|Y` (degrees) | `0deg\|5deg` |
+| `transform_origin` | `X\|Y` or keyword | `50%\|50%`, `top_left`, `center` |
+
+All transform attributes support `__hover`, `__responsive`, and `_sticky` suffixes.
+
+### 7B.4 Transition Settings (Hover Effects)
+
+| Attribute | Values | Default |
+|-----------|--------|---------|
+| `hover_transition_duration` | `0ms` – `2000ms` | `300ms` |
+| `hover_transition_delay` | `0ms` – `2000ms` | `0ms` |
+| `hover_transition_speed_curve` | `ease`, `ease-in`, `ease-out`, `ease-in-out`, `linear` | `ease` |
+
+### 7B.5 Filter Options
+
+| Attribute | Range | Default |
+|-----------|-------|---------|
+| `filter_hue_rotate` | `0deg` – `360deg` | `0deg` |
+| `filter_saturate` | `0%` – `200%` | `100%` |
+| `filter_brightness` | `0%` – `200%` | `100%` |
+| `filter_contrast` | `0%` – `200%` | `100%` |
+| `filter_invert` | `0%` – `100%` | `0%` |
+| `filter_sepia` | `0%` – `100%` | `0%` |
+| `filter_opacity` | `0%` – `100%` | `100%` |
+| `filter_blur` | `0px` – `50px` | `0px` |
+| `mix_blend_mode` | `normal`, `multiply`, `screen`, `overlay`, `darken`, `lighten`, `color-dodge`, `color-burn`, `hard-light`, `soft-light`, `difference`, `exclusion`, `hue`, `saturation`, `color`, `luminosity` | `normal` |
+
+All filter attributes support `__hover` suffix for hover state effects.
+
+### 7B.6 Scroll Effects (Divi 4.6+)
+
+Motion effects triggered by scroll position:
+
+| Attribute Prefix | Effect |
+|-----------------|--------|
+| `scroll_vertical_motion` | Vertical parallax movement |
+| `scroll_horizontal_motion` | Horizontal movement on scroll |
+| `scroll_fade` | Opacity change on scroll |
+| `scroll_scaling` | Scale up/down on scroll |
+| `scroll_rotating` | Rotate on scroll |
+| `scroll_blur` | Blur/unblur on scroll |
+
+Each has: `_enable` (`on`/`off`), `_starting_value`, `_mid_value`, `_end_value`, and `motion_trigger_start` (viewport percentage when animation begins).
+
+```
+scroll_vertical_motion_enable="on"
+scroll_vertical_motion_starting_value="0"
+scroll_vertical_motion_mid_value="50"
+scroll_vertical_motion_end_value="100"
+motion_trigger_start="middle"
+```
+
+### 7B.7 Sticky Options (Divi 4.6+)
+
+Make any element stick to the viewport on scroll:
+
+| Attribute | Values | Description |
+|-----------|--------|-------------|
+| `sticky_position` | `none`, `top`, `bottom` | Where to stick |
+| `sticky_offset_top` | px value | Distance from top when stuck |
+| `sticky_offset_bottom` | px value | Distance from bottom when stuck |
+| `sticky_limit_top` | element reference | Top boundary container |
+| `sticky_limit_bottom` | element reference | Bottom boundary container |
+
+**Sticky-specific style states:** Any attribute can have a `_sticky` suffix (like `__hover`):
+```
+background_color="#ffffff"
+background_color_sticky="#1a1a1a"
+text_text_color="#333333"
+text_text_color_sticky="#ffffff"
+```
+This creates a transition effect when the element enters/exits sticky state.
+
+### 7B.8 Position and Z-Index (Divi 4.10+)
+
+| Attribute | Values | Description |
+|-----------|--------|-------------|
+| `positioning` | `none`, `relative`, `absolute`, `fixed` | CSS position property |
+| `position_origin_a` | `top_left`, `top_center`, `top_right`, `center_left`, `center_center`, `center_right`, `bottom_left`, `bottom_center`, `bottom_right` | Anchor point for absolute/fixed |
+| `horizontal_offset` | CSS value | Distance from anchor (horizontal) |
+| `vertical_offset` | CSS value | Distance from anchor (vertical) |
+| `z_index` | integer | Z-index value (e.g., `10`, `999`, `-1`) |
+
+Z-index is available on every element. Use it to layer overlapping sections, create overlapping card layouts, or ensure sticky headers appear above content.
+
+### 7B.9 Background Patterns and Masks (Divi 4.17+)
+
+**Background Patterns:**
+
+| Attribute | Description |
+|-----------|-------------|
+| `background_pattern_style` | Shape: `diagonal-lines`, `vertical-stripes`, `horizontal-stripes`, `diagonal-stripes`, `polka-dots`, `checkered`, `crosses`, `graph-paper`, `plus-sign`, `diamonds`, `confetti`, `tufted` |
+| `background_pattern_color` | Pattern color (hex/rgba) |
+| `background_pattern_size` | Pattern tile size |
+| `background_pattern_repeat` | `repeat`, `no-repeat`, `repeat-x`, `repeat-y` |
+
+**Background Masks:**
+
+| Attribute | Description |
+|-----------|-------------|
+| `background_mask_style` | Shape: `layer-blob`, `diagonal`, `corner-blob`, `fade`, `rounded-corner`, `diagonal-lines`, `pill` |
+| `background_mask_color` | Mask color |
+| `background_mask_aspect_ratio` | Aspect ratio of mask shape |
+| `background_mask_position` | Position within section |
+| `background_mask_size` | Size of mask shape |
+
+**Video Backgrounds:**
+
+| Attribute | Description |
+|-----------|-------------|
+| `background_video_mp4` | URL to MP4 video |
+| `background_video_webm` | URL to WebM fallback |
+| `background_video_width` / `background_video_height` | Video dimensions |
+| `background_video_pause_outside_viewport` | `on`/`off` — pause when scrolled out of view |
+| `allow_player_pause` | `on`/`off` — show pause button |
+
+**Multi-Stop Gradients (Divi 4.19+):**
+```
+background_color_gradient_type="linear"
+background_color_gradient_direction="135deg"
+background_color_gradient_stops="#2563eb 0%|#7c3aed 50%|#ec4899 100%"
+```
+
+### 7B.10 Section Dividers
+
+Top and bottom dividers on sections create decorative shape separators:
+
+| Attribute | Description |
+|-----------|-------------|
+| `top_divider_style` / `bottom_divider_style` | Divider shape (see list below) |
+| `top_divider_color` / `bottom_divider_color` | Divider color |
+| `top_divider_height` / `bottom_divider_height` | Divider height in px |
+| `top_divider_flip` / `bottom_divider_flip` | `horizontal`, `vertical`, `both` |
+| `top_divider_repeat` / `bottom_divider_repeat` | Number of repeats |
+| `top_divider_arrangement` | `above_content` / `below_content` |
+
+**Available divider shapes:** `wave`, `wave2`, `waves`, `waves2`, `slant`, `slant2`, `arrow`, `arrow2`, `arrow3`, `asymmetric_arrow`, `asymmetric_arrow2`, `mountains`, `mountains2`, `clouds`, `clouds2`, `paper`, `graph`, `graph2`, `curve`, `curve2`, `ramp`, `ramp2`, `triangle`, `zigzag`, `folds`
+
+### 7B.11 Divi Icon Code Reference
+
+Divi uses the ETmodules font. Icons are referenced as `%%N%%` in shortcode attributes and JSON.
+
+**Common Icons by Category:**
+
+| Category | Code | Icon |
+|----------|------|------|
+| **Arrows** | `%%3%%` | Right arrow |
+| | `%%4%%` | Left arrow |
+| | `%%5%%` | Down arrow |
+| | `%%6%%` | Up arrow |
+| | `%%20%%` | Arrow right (alt) |
+| | `%%21%%` | Arrow left (alt) |
+| **Communication** | `%%24%%` | Phone |
+| | `%%109%%` | Email/envelope |
+| | `%%110%%` | Chat bubble |
+| **Social** | `%%171%%` | Facebook |
+| | `%%172%%` | Twitter |
+| | `%%174%%` | Instagram |
+| | `%%175%%` | LinkedIn |
+| | `%%176%%` | YouTube |
+| | `%%177%%` | Pinterest |
+| | `%%179%%` | RSS |
+| **E-commerce** | `%%40%%` | Shopping cart |
+| | `%%41%%` | Shopping bag |
+| | `%%42%%` | Price tag |
+| **Interface** | `%%49%%` | Calendar |
+| | `%%51%%` | Checkmark |
+| | `%%53%%` | Play |
+| | `%%57%%` | Star |
+| | `%%74%%` | Heart |
+| | `%%80%%` | Lock |
+| | `%%82%%` | Key |
+| | `%%90%%` | Settings/gear |
+| | `%%97%%` | Search |
+| | `%%99%%` | Home |
+| | `%%104%%` | User/person |
+| | `%%107%%` | Clock |
+| | `%%141%%` | Map pin |
+| | `%%146%%` | Download |
+| | `%%148%%` | Document |
+| | `%%157%%` | Cog/gear (alt) |
+| **Media** | `%%53%%` | Play |
+| | `%%54%%` | Pause |
+| | `%%55%%` | Stop |
+| | `%%62%%` | Camera |
+| | `%%63%%` | Video camera |
+
+**Extended Icons (Divi 4.13+):** Divi added Font Awesome 5 support (400+ additional icons). These use the `fa` prefix format instead of `%%N%%`.
+
+```bash
+# Find all icon codes used across a site
+wp eval '
+$pages = get_posts(array("post_type" => array("page","post"), "posts_per_page" => -1, "post_status" => "publish"));
+$icons = array();
+foreach ($pages as $p) {
+    preg_match_all("/%%(\d+)%%/", $p->post_content, $matches);
+    foreach ($matches[1] as $code) {
+        $icons[$code] = ($icons[$code] ?? 0) + 1;
+    }
+}
+arsort($icons);
+echo "Icon usage across site:\n";
+foreach ($icons as $code => $count) {
+    echo "  %%{$code}%% — used $count times\n";
+}
+'
+```
+
+### 7B.12 Animation Reference (Complete)
+
+| Attribute | Values |
+|-----------|--------|
+| `animation_style` | `none`, `fade`, `slide`, `bounce`, `zoom`, `flip`, `fold`, `roll` |
+| `animation_direction` | `top`, `right`, `bottom`, `left`, `center` |
+| `animation_duration` | `0ms` – `3000ms` (default `1000ms`) |
+| `animation_delay` | `0ms` – `3000ms` (default `0ms`) |
+| `animation_intensity_slide` | `0%` – `100%` (default `50%`) |
+| `animation_intensity_zoom` | `0%` – `100%` |
+| `animation_intensity_flip` | `0%` – `100%` |
+| `animation_intensity_fold` | `0%` – `100%` |
+| `animation_intensity_roll` | `0%` – `100%` |
+| `animation_starting_opacity` | `0%` – `100%` (default `0%`) |
+| `animation_speed_curve` | `ease`, `ease-in`, `ease-out`, `ease-in-out`, `linear` |
+| `animation_repeat` | `once`, `loop` |
+
+---
+
 ## PART EIGHT: PERFORMANCE OPTIMIZATION
 
 ### Identifying Performance Issues
@@ -2613,6 +3267,230 @@ $functions_file = $child_dir . "/functions.php";
 $new_code = "\n\n// Custom code added by agent\nadd_action(\"wp_enqueue_scripts\", function() {\n    wp_enqueue_style(\"custom-styles\", get_stylesheet_directory_uri() . \"/custom.css\");\n});\n";
 file_put_contents($functions_file, file_get_contents($functions_file) . $new_code);
 echo "Updated functions.php\n";
+'
+```
+
+---
+
+## PART 10B: JAVASCRIPT API AND EVENTS
+
+Divi's JavaScript API is relevant when injecting scripts via Code modules or child theme JS files.
+
+### Global Objects
+
+| Object | Description |
+|--------|-------------|
+| `window.ET_Builder` | Main Divi builder JavaScript namespace |
+| `window.ETBuilderBackend` | Backend builder config, module definitions, settings data |
+| `window.et_pb_custom` | Frontend customization settings (font sizes, colors, breakpoints) |
+| `window.et_builder_utils` | Utility functions available on the frontend |
+
+### Custom Events
+
+| Event | When It Fires | Use Case |
+|-------|---------------|----------|
+| `et_builder_api_ready` | Divi frontend API is fully loaded | Safe to call Divi JS functions |
+| `et_resize` | Window resize (debounced by Divi) | Responsive layout adjustments |
+| `et_reinit` | Divi reinitializes modules (after AJAX) | Rebind custom handlers |
+| `et_pb_after_init_modules` | All frontend modules initialized | Safe to modify module DOM |
+| `et_pb_fitvids_init` | Video modules initialized | Custom video handling |
+| `et_pb_parallax_init` | Parallax effects initialized | Custom parallax |
+
+**Example: Run code after Divi modules are ready**
+```javascript
+jQuery(window).on('et_builder_api_ready', function() {
+    // Safe to interact with Divi modules here
+    console.log('Divi API ready');
+});
+```
+
+**Example: Run code on Divi-debounced resize**
+```javascript
+jQuery(window).on('et_resize', function() {
+    // Runs after Divi's resize debounce
+});
+```
+
+---
+
+## PART 10C: COMMON CSS OVERRIDE RECIPES
+
+These are the most frequently needed CSS customizations for Divi sites. Add to child theme `style.css`, Divi Theme Options Custom CSS, or a page's custom CSS.
+
+### Transparent Header
+```css
+/* Make default header transparent */
+#main-header { background-color: transparent !important; }
+/* Solid on scroll (fixed header) */
+#main-header.et-fixed-header { background-color: rgba(0,0,0,0.9) !important; }
+```
+
+### Fixed Header Height
+```css
+#main-header { padding: 10px 0 !important; }
+#main-header .logo_container img { max-height: 60px !important; }
+#main-header.et-fixed-header { padding: 5px 0 !important; }
+#main-header.et-fixed-header .logo_container img { max-height: 40px !important; }
+```
+
+### Mobile Hamburger Menu Customization
+```css
+/* Hamburger icon color */
+.mobile_menu_bar:before { color: #ffffff !important; }
+/* Mobile menu background */
+.et_mobile_menu { background-color: #1a1a2e !important; }
+/* Mobile menu links */
+.et_mobile_menu li a { color: #ffffff !important; padding: 12px 20px !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important; }
+```
+
+### Hide Footer Credits
+```css
+#footer-info { display: none !important; }
+```
+
+### Fullwidth Section Breaking Out of Container
+```css
+.et_pb_section.full-bleed {
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
+}
+```
+
+### Add Custom Fonts to Divi (via child theme)
+```php
+// In child theme functions.php — add a local custom font
+add_filter('et_builder_google_fonts', function($fonts) {
+    $fonts['My Custom Font'] = array(
+        'styles'         => '300,400,500,600,700',
+        'character_sets' => 'latin',
+        'type'           => 'sans-serif',
+    );
+    return $fonts;
+});
+// Enqueue the actual font files
+add_action('wp_enqueue_scripts', function() {
+    wp_enqueue_style('custom-font', get_stylesheet_directory_uri() . '/fonts/my-font.css');
+});
+```
+
+### Divi-Specific Responsive Overrides
+```css
+/* Tablet */
+@media (max-width: 980px) {
+    .et_pb_section { padding: 40px 0 !important; }
+}
+/* Phone */
+@media (max-width: 767px) {
+    .et_pb_section { padding: 30px 0 !important; }
+    .et_pb_row { padding: 0 20px !important; }
+    h1, .et_pb_module_header { font-size: 28px !important; }
+}
+```
+
+### Static CSS Cache Directory
+Divi generates static CSS files in `wp-content/et-cache/`. If styles aren't loading:
+```bash
+# Check if et-cache directory exists and is writable
+ls -la wp-content/et-cache/ 2>/dev/null || echo "et-cache directory does not exist"
+
+# Regenerate static CSS by clearing cache
+wp eval '
+delete_option("et_pb_css_synced");
+if (function_exists("et_core_clear_main_cache")) { et_core_clear_main_cache(); }
+echo "Static CSS cache cleared — will regenerate on next page load.\n";
+'
+
+# If et-cache is missing or has wrong permissions
+# The directory needs to be writable by PHP (typically www-data or nginx user)
+```
+
+---
+
+## PART 10D: DIVI SAFE MODE AND SUPPORT CENTER
+
+### Safe Mode
+Divi Safe Mode disables all third-party plugins and custom CSS/JS while keeping Divi functional. Use it to isolate conflicts.
+
+```bash
+# Enable Safe Mode
+wp option update et_safe_mode on
+echo "Safe Mode ENABLED — third-party plugins and custom CSS/JS disabled"
+
+# Disable Safe Mode
+wp option update et_safe_mode off
+echo "Safe Mode DISABLED — all plugins and customizations restored"
+
+# Check Safe Mode status
+wp option get et_safe_mode 2>/dev/null || echo "not set (off)"
+```
+
+**What Safe Mode disables:** Third-party plugins, child theme customizations, custom CSS from Theme Options, custom JS. **What it keeps:** Core Divi functionality, Theme Builder layouts, Divi Library items.
+
+### System Status Check (Divi Support Center equivalent)
+```bash
+wp eval '
+echo "=== DIVI SYSTEM STATUS ===\n";
+echo "PHP Version: " . phpversion() . "\n";
+echo "Memory Limit: " . ini_get("memory_limit") . "\n";
+echo "Max Execution Time: " . ini_get("max_execution_time") . "s\n";
+echo "Max Input Vars: " . ini_get("max_input_vars") . " (need >= 3000 for complex pages)\n";
+echo "Upload Max: " . ini_get("upload_max_filesize") . "\n";
+echo "Post Max: " . ini_get("post_max_size") . "\n";
+echo "WordPress: " . get_bloginfo("version") . "\n";
+$theme = wp_get_theme();
+echo "Theme: " . $theme->get("Name") . " " . $theme->get("Version") . "\n";
+echo "Divi: " . (defined("ET_BUILDER_VERSION") ? ET_BUILDER_VERSION : "not detected") . "\n";
+echo "Builder BFB: " . (get_option("et_builder_bfb_enabled") ?: "not set") . "\n";
+echo "Safe Mode: " . (get_option("et_safe_mode") ?: "off") . "\n";
+echo "Static CSS: " . (get_option("et_pb_static_css_file") ?: "not set") . "\n";
+echo "Dynamic CSS: " . (get_option("et_pb_enable_dynamic_css") ?: "not set") . "\n";
+echo "et-cache writable: " . (is_writable(WP_CONTENT_DIR . "/et-cache") ? "yes" : "NO — may cause style issues") . "\n";
+'
+```
+
+---
+
+## PART 10E: DIVI 4 TO 5 MIGRATION
+
+### How Migration Works
+Divi 5 converts Divi 4 shortcode pages to block format **per-page on first load/edit**. Pages remain in Divi 4 format until accessed in the Divi 5 builder.
+
+### Migration Status
+```bash
+wp eval '
+$status = get_option("et_builder_5_migration_status");
+echo "Migration status: " . ($status ?: "Not started / Not applicable") . "\n";
+
+$pages = get_posts(array("post_type" => array("page", "post"), "posts_per_page" => -1, "post_status" => "publish"));
+$v4 = 0; $v5 = 0; $other = 0;
+foreach ($pages as $page) {
+    if (strpos($page->post_content, "[et_pb_") !== false) $v4++;
+    elseif (strpos($page->post_content, "wp:divi/") !== false) $v5++;
+    else $other++;
+}
+echo "Divi 4 shortcode pages: $v4\n";
+echo "Divi 5 block pages: $v5\n";
+echo "Non-Divi pages: $other\n";
+echo "Migration progress: " . ($v4 + $v5 > 0 ? round($v5 / ($v4 + $v5) * 100) . "%" : "N/A") . "\n";
+'
+```
+
+### Key Migration Facts
+1. **Lazy migration:** Pages convert on first edit, not all at once
+2. **Old content preserved:** `_et_pb_old_content` post meta stores the pre-migration Divi 4 shortcode content
+3. **Mixed sites are normal:** During transition, some pages are Divi 4 and others Divi 5
+4. **Theme Builder interaction:** Theme Builder templates work with both formats — Divi renders the appropriate format based on content detection
+5. **Rollback:** To revert a page to Divi 4 format, restore from `_et_pb_old_content` meta:
+```bash
+wp eval '
+$id = <POST_ID>;
+$old = get_post_meta($id, "_et_pb_old_content", true);
+if ($old) {
+    wp_update_post(array("ID" => $id, "post_content" => $old));
+    echo "Reverted to Divi 4 content.\n";
+} else {
+    echo "No old content backup found.\n";
+}
 '
 ```
 
