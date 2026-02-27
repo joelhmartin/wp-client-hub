@@ -8,6 +8,119 @@ Always reference and follow the global rules in `CLAUDE.md`.
 
 ---
 
+## BEHAVIORAL IMPERATIVES — READ THIS FIRST
+
+**You are being evaluated on ACCURACY, not speed.** Take as many tool calls as needed. Never guess. Never assume. Never skip steps.
+
+### 1. NEVER Give Up After One Failed Command
+
+When a command returns empty, returns an error, or doesn't find what you expect — **this does NOT mean the data doesn't exist.** It means your approach was wrong. You MUST:
+
+1. **Stop and diagnose WHY it failed.** Read the error message. Think about what it means.
+2. **Try at least 3 alternative approaches** before reporting failure to the user.
+3. **Widen your search.** If `wp post list --post_type=et_template` returns nothing, try `--post_status=any`. If that fails, try `wp post list --post_type=et_theme_builder`. If that fails, check if Divi is even active: `wp theme list --status=active`.
+
+**Example of what NOT to do:**
+```
+❌ "I ran `wp post list --post_type=et_template` and it returned nothing. The Theme Builder doesn't appear to be configured."
+```
+
+**What to do instead:**
+```
+✅ "That returned nothing — let me check post_status=any... still nothing.
+    Let me check if the Theme Builder container exists: `wp post list --post_type=et_theme_builder --post_status=any`
+    Found it (ID 264004). Now let me get the template chain from meta...
+    `wp post meta get 264004 _et_template`
+    Got template IDs. Now checking each for header layouts..."
+```
+
+### 2. ALWAYS Run the Discovery Script First
+
+Before ANY Theme Builder operation (editing headers, footers, body layouts), ALWAYS run the **Complete Theme Builder Discovery Script** from section 4.1.3. This maps the entire structure in one shot. Do not try to navigate piece by piece — you will get lost.
+
+### 3. Know There Are THREE Header Systems
+
+A Divi site's header can come from ANY of these three places. Check ALL THREE before concluding you can't find it:
+
+1. **Theme Builder** — `et_theme_builder` → `_et_template` → `_et_header_layout_id` → layout post content (see section 4.1)
+2. **Traditional Divi Header** — `et_divi` option with `header_style`, `logo`, nav settings (see section 4.3)
+3. **Custom PHP Header** — Child theme `functions.php` hooking into `wp_body_open`, `et_html_main_header`, or overriding `header.php` (see section 4.3)
+
+```bash
+# Quick check: which header system is this site using?
+wp eval '
+$theme = wp_get_theme();
+echo "Theme: " . $theme->get("Name") . "\n";
+$parent = $theme->parent();
+
+// Check 1: Theme Builder
+$tb = get_posts(array("post_type" => "et_theme_builder", "posts_per_page" => 1, "post_status" => "any"));
+if (!empty($tb)) {
+    $templates = get_post_meta($tb[0]->ID, "_et_template", true);
+    $tb_header = false;
+    if (is_array($templates)) {
+        foreach ($templates as $tid) {
+            $hid = get_post_meta($tid, "_et_header_layout_id", true);
+            $on = get_post_meta($tid, "_et_header_layout_enabled", true);
+            if ($hid && $on) { $tb_header = true; echo "THEME BUILDER HEADER: Layout ID $hid (template $tid)\n"; }
+        }
+    }
+    if (!$tb_header) echo "Theme Builder exists but NO header layout assigned.\n";
+} else {
+    echo "No Theme Builder configured.\n";
+}
+
+// Check 2: Traditional header
+$opts = get_option("et_divi");
+echo "Traditional header style: " . ($opts["header_style"] ?? "left (default)") . "\n";
+echo "Logo: " . ($opts["logo"] ?? "not set") . "\n";
+
+// Check 3: PHP hooks
+$child_dir = get_stylesheet_directory();
+if (file_exists($child_dir . "/header.php")) echo "CUSTOM header.php in child theme!\n";
+$funcs = file_exists($child_dir . "/functions.php") ? file_get_contents($child_dir . "/functions.php") : "";
+foreach (array("wp_body_open", "et_html_main_header", "et_header_top") as $hook) {
+    if (strpos($funcs, $hook) !== false) echo "CUSTOM PHP: Found $hook hook in functions.php!\n";
+}
+'
+```
+
+### 4. Verify Every Change
+
+After making ANY modification:
+1. **Read back the content** to confirm the change was applied
+2. **Clear all caches** (Divi static CSS, object cache, page cache, Kinsta CDN)
+3. If the user reports it didn't work, check whether the change is in the right place (right post ID, right layout, right template)
+
+### 5. Trace the Full Chain — Never Guess IDs
+
+**NEVER assume or guess a post ID.** Always trace the data chain:
+- Don't assume post ID 1 is the homepage. Run `wp option get page_on_front`.
+- Don't assume the first `et_header_layout` is the active one. Trace from `et_theme_builder` → `_et_template` → `_et_header_layout_id`.
+- Don't assume `et_pb_layout` items are used. Check `global_module` references in page content.
+
+### 6. When Confused, Dump Everything
+
+If you're unsure what's happening, dump the full state rather than guessing:
+```bash
+# Complete site architecture dump
+wp eval '
+echo "=== DIVI VERSION ===\n";
+echo defined("ET_BUILDER_VERSION") ? ET_BUILDER_VERSION : "not loaded";
+echo "\n\n=== ACTIVE THEME ===\n";
+$t = wp_get_theme();
+echo $t->get("Name") . " " . $t->get("Version") . ($t->parent() ? " (child of " . $t->parent()->get("Name") . ")" : "") . "\n";
+echo "\n=== ALL DIVI POST TYPES ===\n";
+foreach (array("et_theme_builder","et_template","et_header_layout","et_body_layout","et_footer_layout","et_pb_layout") as $pt) {
+    $posts = get_posts(array("post_type" => $pt, "posts_per_page" => -1, "post_status" => "any"));
+    echo "$pt: " . count($posts) . " posts\n";
+    foreach ($posts as $p) echo "  ID $p->ID: $p->post_title (status: $p->post_status, content: " . strlen($p->post_content) . " chars)\n";
+}
+'
+```
+
+---
+
 ## Core Competencies
 
 1. Divi 4 shortcode structure (reading, writing, modifying post_content)

@@ -32,6 +32,17 @@ Each agent inherits the rules in this file, plus its own domain-specific instruc
 - **PHP version**: Confirm with `wp --info` before running commands that depend on specific PHP behavior.
 - **Staging**: Always recommend testing changes on Kinsta's staging environment before production. Reference staging push/pull via the Kinsta dashboard.
 
+### Failure Recovery Protocol (All Agents)
+
+**You are evaluated on ACCURACY, not speed.** Take as many commands as needed to get it right.
+
+1. **When a command returns empty or errors — DIAGNOSE, don't give up.** An empty result means your approach was wrong, not that the data doesn't exist. Try at least 3 alternative approaches before telling the user something can't be found.
+2. **Read error messages carefully.** They almost always tell you what went wrong. "Unknown post type" means check if the plugin/theme is active. "Invalid column" means check the DB schema. "Permission denied" means check file ownership.
+3. **Widen your search progressively.** If `wp post list --post_type=X` returns nothing, try `--post_status=any`. If `grep` finds nothing, try broader patterns or different directories. If `wp option get X` is empty, try `wp option list --search="X"`.
+4. **After every change, verify it worked.** Re-read the file. Re-query the database. Check the option value. Don't assume success from a lack of error output.
+5. **When you're confused about the data structure, dump everything.** Don't guess — run a comprehensive diagnostic command that shows the full state.
+6. **Never claim success without a tool call that succeeded.** If you described what you "would do" but didn't call the tool, the change did NOT happen.
+
 ### Safety Protocols
 
 1. **Always back up before destructive operations.** Use `wp db export` before database changes. For file changes, confirm revert strategy.
