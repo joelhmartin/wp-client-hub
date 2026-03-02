@@ -201,9 +201,54 @@ Divi 4 stores layouts as nested shortcodes in `post_content`:
 ```
 
 **Section types:**
-- `et_pb_section` — Regular section
-- `et_pb_section fullwidth="on"` — Fullwidth section (only fullwidth modules allowed)
-- `et_pb_section specialty="on"` — Specialty section (mixed column widths)
+- `et_pb_section` — Regular section (contains rows)
+- `et_pb_section fullwidth="on"` — Fullwidth section (only fullwidth modules allowed, NO rows)
+- `et_pb_section specialty="on"` — Specialty section (mixed column widths with sidebar)
+
+**Required section attributes:**
+- `fb_built="1"` — REQUIRED on ALL sections (tells Visual Builder to recognize them)
+- `_builder_version="4.27.0"` — REQUIRED on ALL modules, rows, columns, and sections
+
+**Fullwidth sections** skip the row/column layer:
+```
+[et_pb_section fb_built="1" fullwidth="on" _builder_version="4.27.0"]
+  [et_pb_fullwidth_header title="Welcome" _builder_version="4.27.0"][/et_pb_fullwidth_header]
+[/et_pb_section]
+```
+Only fullwidth modules (`et_pb_fullwidth_*`) can go inside fullwidth sections. Regular modules CANNOT.
+
+**Specialty sections** have a pre-defined column layout with a sidebar:
+```
+[et_pb_section fb_built="1" specialty="on" _builder_version="4.27.0"]
+  [et_pb_column type="3_4" specialty_columns="3" _builder_version="4.27.0"]
+    [et_pb_row_inner _builder_version="4.27.0"]
+      [et_pb_column_inner type="4_4" _builder_version="4.27.0"]
+        [et_pb_text _builder_version="4.27.0"]Main content[/et_pb_text]
+      [/et_pb_column_inner]
+    [/et_pb_row_inner]
+  [/et_pb_column]
+  [et_pb_column type="1_4" _builder_version="4.27.0"]
+    [et_pb_sidebar _builder_version="4.27.0"][/et_pb_sidebar]
+  [/et_pb_column]
+[/et_pb_section]
+```
+Specialty sections use `et_pb_row_inner` and `et_pb_column_inner` for the main content area.
+
+**Column types and widths:**
+
+| type | Width | Notes |
+|------|-------|-------|
+| `4_4` | 100% | Single column |
+| `1_2` | 50% | Two equal columns |
+| `1_3` | 33.33% | Three equal columns |
+| `2_3` | 66.66% | Two-thirds |
+| `1_4` | 25% | Quarter |
+| `3_4` | 75% | Three-quarters |
+| `1_5` | 20% | Five equal columns |
+| `2_5` | 40% | Two-fifths |
+| `3_5` | 60% | Three-fifths |
+| `1_6` | 16.66% | Six equal columns |
+| `5_6` | 83.33% | Five-sixths |
 
 **Row column structures:** Defined by `column_structure` attribute:
 - `4_4` (1 column, full width)
@@ -215,6 +260,9 @@ Divi 4 stores layouts as nested shortcodes in `post_content`:
 - `1_4,1_2,1_4` (centered wide)
 - `1_5,1_5,1_5,1_5,1_5` (5 equal columns)
 - `1_6,1_6,1_6,1_6,1_6,1_6` (6 equal columns)
+- `2_5,3_5` or `3_5,2_5` (two-fifths + three-fifths)
+
+**CRITICAL:** Column types in a row MUST add up to 1 (the whole width). Mismatched columns break the layout.
 
 ### 1.2 Complete Divi 4 Module Reference
 
@@ -234,7 +282,7 @@ Divi 4 stores layouts as nested shortcodes in `post_content`:
 | `et_pb_pricing_tables` | Pricing Tables | Contains `et_pb_pricing_table` children |
 | `et_pb_cta` | Call To Action | `title`, `button_text`, `button_url` |
 | `et_pb_contact_form` | Contact Form | Contains `et_pb_contact_field` children |
-| `et_pb_divider` | Divider | `show_divider="on/off"`, `divider_style` |
+| `et_pb_divider` | Divider | `show_divider="on"` (MUST enable), `divider_style`, `divider_weight`, `color` |
 | `et_pb_blog` | Blog | `posts_number`, `include_categories`, `fullwidth` |
 | `et_pb_gallery` | Gallery | `gallery_ids`, `posts_number`, `fullwidth` |
 | `et_pb_portfolio` | Portfolio | `posts_number`, `include_categories`, `fullwidth` |
@@ -248,8 +296,11 @@ Divi 4 stores layouts as nested shortcodes in `post_content`:
 | `et_pb_number_counter` | Number Counter | `title`, `number`, `percent_sign` |
 | `et_pb_circle_counter` | Circle Counter | `title`, `number` |
 | `et_pb_bar_counters` | Bar Counters | Contains `et_pb_counter` children |
-| `et_pb_person` | Person | `name`, `position`, `image_url` |
-| `et_pb_menu` | Menu | `menu_id`, used heavily in Theme Builder headers |
+| `et_pb_team_member` | Team Member | `name`, `position`, `image_url`, social URLs |
+| `et_pb_person` | Person (alias) | `name`, `position`, `image_url` |
+| `et_pb_heading` | Heading | `title`, `heading_level="h1\|h2\|h3\|h4\|h5\|h6"` |
+| `et_pb_menu` | Menu | `menu_id`, `menu_style`, `submenu_direction` |
+| `et_pb_filterable_portfolio` | Filterable Portfolio | Like portfolio + `show_categories_filter="on"` |
 | `et_pb_search` | Search | `placeholder`, for Theme Builder headers |
 | `et_pb_login` | Login | `title`, `current_page_redirect` |
 | `et_pb_signup` | Email Optin | `provider`, `title`, `button_text` |
@@ -301,6 +352,132 @@ hover_enabled="1"               → Enables hover state
 link_option_url=""              → Makes entire module a link
 link_option_url_new_window="on" → Opens link in new tab
 ```
+
+#### 1.3a Pipe-Delimited Value Formats (Divi 4)
+
+**Spacing** (top|right|bottom|left):
+```
+custom_margin="20px|30px|20px|30px"
+custom_padding="40px||40px|"         ← empty = default/inherit
+```
+
+**Responsive** (desktop|tablet|phone):
+```
+text_font_size="18px|16px|14px"
+custom_padding="60px||60px||false|false"   ← last two = responsive sync flags
+```
+
+**Visibility** (phone|tablet|desktop):
+```
+disabled_on="on|on|off"   ← hidden on phone and tablet, visible on desktop
+```
+
+**Font** (family|weight|italic|uppercase|underline|strikethrough|line_through|small_caps):
+```
+text_font="Roboto|700|||||||"   ← Roboto, bold, no other styles
+text_font="Roboto|700|on|on||||"   ← Roboto, bold, italic, uppercase
+```
+
+**Border radii** (toggle|top-left|top-right|bottom-right|bottom-left):
+```
+border_radii="on|10px|10px|10px|10px"
+```
+
+#### 1.3b Border, Box Shadow, Filters, and States
+
+**Border attributes:**
+```
+border_radii="on|10px|10px|10px|10px"  → toggle|TL|TR|BR|BL
+border_width_all="1px"
+border_color_all="#CCCCCC"
+border_style_all="solid|dashed|dotted|double|groove|ridge|inset|outset|none"
+border_width_top="2px"                 → individual sides
+border_color_bottom="#333333"
+```
+
+**Box shadow:**
+```
+box_shadow_style="none|preset1|preset2|preset3|preset4|preset5|preset6|preset7"
+box_shadow_horizontal="0px"
+box_shadow_vertical="4px"
+box_shadow_blur="12px"
+box_shadow_spread="0px"
+box_shadow_color="rgba(0,0,0,0.1)"
+box_shadow_position="outer|inner"
+```
+
+**CSS Filters:**
+```
+filter_hue_rotate="0deg"
+filter_saturate="100%"
+filter_brightness="100%"
+filter_contrast="100%"
+filter_invert="0%"
+filter_sepia="0%"
+filter_opacity="100%"
+filter_blur="0px"
+mix_blend_mode="normal"
+```
+
+**Hover states** (append `__hover` to any attribute):
+```
+background_color="#3366CC"
+background_color__hover="#2255BB"
+```
+
+**Sticky states** (append `__sticky` to any attribute):
+```
+background_color="#FFFFFF"
+background_color__sticky="rgba(255,255,255,0.9)"
+```
+
+#### 1.3c Special Characters in Shortcode Attributes
+
+Characters that break shortcode parsing must be encoded:
+
+| Character | Encoding |
+|-----------|----------|
+| `[` | `&#91;` |
+| `]` | `&#93;` |
+| `"` inside attributes | `%22` |
+| `&` | `&amp;` (in content), `%26` (in attributes) |
+| Line breaks in attributes | `%0A` |
+
+**Shell escaping concerns** — Divi shortcodes contain characters dangerous in shell contexts:
+- Double quotes `"` — present in every shortcode
+- Single quotes `'` — in content text
+- Square brackets `[]` — shortcode delimiters
+- Ampersands `&` — in URLs and HTML entities
+- Dollar signs `$` — in pricing content
+- Backticks `` ` `` — in code modules
+
+**Safest approach**: Always use heredoc with file-based updates:
+```bash
+cat > /tmp/divi-content.txt << 'DIVIEOF'
+[et_pb_section fb_built="1" _builder_version="4.27.0"]
+...content with any characters...
+[/et_pb_section]
+DIVIEOF
+
+wp post update <ID> /tmp/divi-content.txt --path=/path
+rm /tmp/divi-content.txt
+```
+
+#### 1.3d Shortcode Integrity Rules
+
+1. **Every opening tag must have a closing tag:**
+   - `[et_pb_text _builder_version="4.27.0"]content[/et_pb_text]`
+2. **Self-closing modules still need closing tags:**
+   - `[et_pb_divider _builder_version="4.27.0"][/et_pb_divider]` (NOT `[et_pb_divider ... /]`)
+3. **Tags must be properly nested (no overlapping)**
+4. **Attribute values must be double-quoted:**
+   - `background_color="#FF0000"` (NOT `background_color='#FF0000'`)
+5. **Content goes between module tags, NOT in attributes:**
+   - `[et_pb_text ...]<p>Content</p>[/et_pb_text]` (NOT `content="..."`)
+6. **Column type is REQUIRED:**
+   - `[et_pb_column type="4_4" ...]` (NOT `[et_pb_column ...]` without type)
+7. **Column types must add up to 1:**
+   - `1_2 + 1_2 = 1` (valid); `1_2 + 1_3 ≠ 1` (INVALID)
 
 ### 1.4 Responsive Attribute Syntax (Divi 4)
 
@@ -368,7 +545,14 @@ The blurb module combines an icon/image with a title and text:
 
 **Field types:** `input` (default), `email`, `text` (textarea), `select`, `radio`, `checkbox`
 
-For select/radio/checkbox fields, define options with the `conditional_logic` and pipe-separated values:
+**Additional field attributes:**
+- `min_length` — minimum character length
+- `max_length` — maximum character length
+- `allowed_symbols` — restrict character types
+- `conditional_logic="on"` — show/hide field based on other fields
+- `fullwidth_field="on"` — span full form width
+
+For select/radio/checkbox fields, define options with pipe-separated values:
 ```
 [et_pb_contact_field field_id="Service" field_title="Service Needed" field_type="select" select_options="%91%22Option A%22,%22Option B%22,%22Option C%22%93"]
 ```
@@ -376,8 +560,15 @@ For select/radio/checkbox fields, define options with the `conditional_logic` an
 ### 1.9 Blog Module
 
 ```
-[et_pb_blog fullwidth="off" posts_number="6" include_categories="3,5,7" show_author="on" show_date="on" show_categories="on" show_excerpt="on" show_pagination="on" excerpt_length="270" use_overlay="on" overlay_icon_color="#ffffff" hover_overlay_color="rgba(0,0,0,0.6)" hover_icon="%%3%%" masonry_tile_background_color="#ffffff" _builder_version="4.27.4" header_font="||||||||" header_text_color="#333333" header_font_size="18px" body_font="||||||||" body_text_color="#666666" meta_font="||||||||" meta_text_color="#999999" meta_font_size="13px"]
+[et_pb_blog fullwidth="off" posts_number="6" include_categories="3,5,7" show_author="on" show_date="on" show_categories="on" show_excerpt="on" show_pagination="on" excerpt_length="270" use_overlay="on" overlay_icon_color="#ffffff" hover_overlay_color="rgba(0,0,0,0.6)" hover_icon="%%3%%" masonry_tile_background_color="#ffffff" offset_number="0" _builder_version="4.27.4" header_font="||||||||" header_text_color="#333333" header_font_size="18px" body_font="||||||||" body_text_color="#666666" meta_font="||||||||" meta_text_color="#999999" meta_font_size="13px"]
 [/et_pb_blog]
+
+Additional Blog module attributes:
+- `offset_number="0"` — Skip N posts from the beginning
+- `use_current_loop="on"` — Use the current WordPress query (for Theme Builder archive templates)
+- `show_content="on"` — Show full post content instead of excerpt
+- `show_thumbnail="on"` — Show featured image
+- `show_comments="on"` — Show comment count in meta
 ```
 
 ### 1.10 Slider and Slide Modules
@@ -792,27 +983,196 @@ wp db query "SELECT option_name FROM $(wp db prefix 2>/dev/null)options WHERE op
 
 ### 2.2 Divi 5 Content Storage Format
 
-Divi 5 stores content using WordPress block comment delimiters (the same system Gutenberg uses). Each element is wrapped in HTML comments containing JSON attributes:
+Divi 5 stores content using WordPress block comment delimiters (the same system Gutenberg uses). Each element is wrapped in HTML comments containing a JSON payload.
+
+**Block comment syntax:**
+```
+<!-- wp:divi/MODULE_SLUG {JSON_PAYLOAD} -->
+  ...child blocks...
+<!-- /wp:divi/MODULE_SLUG -->
+```
+
+- Opening tag: `<!-- wp:divi/slug {json} -->`
+- Closing tag: `<!-- /wp:divi/slug -->`
+- JSON must be valid and on a single line inside the opening comment
+- Self-closing modules have opening and closing tags adjacent with no content between
+- Container elements (sections, rows, columns, groups) have child blocks between opening and closing
+
+#### 2.2a JSON Payload Structure (Real Format)
+
+The JSON payload inside each block comment uses **deeply nested objects with responsive breakpoint wrappers**. Nearly every value is wrapped in a `{desktop: {value: ...}}` responsive object.
+
+**Top-level JSON keys:**
+```json
+{
+  "builderVersion": "4.27.0",
+  "modulePreset": "default",
+  "themeBuilderArea": {
+    "desktop": { "value": "post_content" }
+  },
+  "module": {
+    "decoration": {
+      "background": { ... },
+      "spacing": { "margin": { ... }, "padding": { ... } },
+      "border": { ... },
+      "boxShadow": { ... },
+      "filters": { ... },
+      "animation": { ... }
+    },
+    "advanced": {
+      "cssId": { "desktop": { "value": "" } },
+      "cssClass": { "desktop": { "value": "" } },
+      "customCss": { ... }
+    }
+  },
+  "content": {
+    "innerContent": {
+      "desktop": { "value": "<p>Module content HTML</p>" }
+    },
+    "decoration": {
+      "bodyFont": { ... },
+      "headerFont": { ... },
+      "link": { ... }
+    }
+  },
+  "type": {
+    "desktop": { "value": "4_4" }
+  }
+}
+```
+
+| Key | Purpose |
+|-----|---------|
+| `builderVersion` | Divi version string (always include) |
+| `modulePreset` | `"default"` or a saved preset name |
+| `themeBuilderArea` | Where this module lives (`"post_content"`, `"header"`, `"footer"`) |
+| `module` | Module-level styling (background, spacing, border, etc.) |
+| `content` | Content and content-level styling (text, fonts, inner HTML) |
+| `type` | Column type (only on column blocks) |
+
+#### 2.2b Responsive Value Wrapper
+
+The most important structural feature: nearly every value is wrapped in a responsive breakpoint object:
+
+```json
+{
+  "propertyName": {
+    "desktop": { "value": "actual_value" },
+    "tablet": { "value": "tablet_value" },
+    "phone": { "value": "phone_value" }
+  }
+}
+```
+
+If only `desktop` is specified, `tablet` and `phone` inherit from it. Only include breakpoints that differ.
+
+#### 2.2c Module Decoration Paths
+
+**Background:**
+```json
+"module.decoration.background.desktop.value.color" = "#FFFFFF"
+"module.decoration.background.desktop.value.image" = "url.jpg"
+"module.decoration.background.desktop.value.gradient" = { ... }
+```
+
+**Spacing:**
+```json
+"module.decoration.spacing.padding.desktop.value.top" = "20px"
+"module.decoration.spacing.padding.desktop.value.right" = "30px"
+"module.decoration.spacing.padding.desktop.value.bottom" = "20px"
+"module.decoration.spacing.padding.desktop.value.left" = "30px"
+"module.decoration.spacing.margin.desktop.value.top" = "0px"
+```
+
+**Responsive padding example:**
+```json
+{
+  "module": {
+    "decoration": {
+      "spacing": {
+        "padding": {
+          "desktop": { "value": { "top": "80px", "bottom": "80px" } },
+          "tablet": { "value": { "top": "60px", "bottom": "60px" } },
+          "phone": { "value": { "top": "40px", "bottom": "40px" } }
+        }
+      }
+    }
+  }
+}
+```
+
+**Border:**
+```json
+"module.decoration.border.desktop.value.radius.topLeft" = "10px"
+"module.decoration.border.desktop.value.styles.all.width" = "1px"
+"module.decoration.border.desktop.value.styles.all.color" = "#CCCCCC"
+"module.decoration.border.desktop.value.styles.all.style" = "solid"
+```
+
+**Box Shadow:**
+```json
+"module.decoration.boxShadow.desktop.value.style" = "preset1"
+"module.decoration.boxShadow.desktop.value.horizontal" = "0px"
+"module.decoration.boxShadow.desktop.value.vertical" = "4px"
+"module.decoration.boxShadow.desktop.value.blur" = "12px"
+"module.decoration.boxShadow.desktop.value.color" = "rgba(0,0,0,0.1)"
+```
+
+#### 2.2d Content Decoration Paths
+
+**Body text font:**
+```json
+"content.decoration.bodyFont.body.font.desktop.value.family" = "Roboto"
+"content.decoration.bodyFont.body.font.desktop.value.weight" = "400"
+"content.decoration.bodyFont.body.font.desktop.value.color" = "#333333"
+"content.decoration.bodyFont.body.font.desktop.value.size" = "16px"
+"content.decoration.bodyFont.body.font.desktop.value.lineHeight" = "1.8em"
+"content.decoration.bodyFont.body.font.desktop.value.letterSpacing" = "0px"
+```
+
+**Header font:**
+```json
+"content.decoration.headerFont.h2.font.desktop.value.family" = "Montserrat"
+"content.decoration.headerFont.h2.font.desktop.value.weight" = "700"
+"content.decoration.headerFont.h2.font.desktop.value.color" = "#333333"
+"content.decoration.headerFont.h2.font.desktop.value.size" = "42px"
+```
+
+#### 2.2e Complete Nested Layout Example
 
 ```html
-<!-- wp:divi/section {"attrs":{"background_color":"#f7f7f7"}} -->
-  <!-- wp:divi/row {"attrs":{"column_structure":"1_2,1_2"}} -->
-    <!-- wp:divi/column {"attrs":{"type":"1_2"}} -->
-      <!-- wp:divi/text {"attrs":{"content":"<p>Hello world</p>","text_font_size":"16px"}} /-->
-    <!-- /wp:divi/column -->
-    <!-- wp:divi/column {"attrs":{"type":"1_2"}} -->
-      <!-- wp:divi/button {"attrs":{"button_text":"Click Me","button_url":"https://example.com"}} /-->
+<!-- wp:divi/section {"builderVersion":"4.27.0","modulePreset":"default","module":{"decoration":{"background":{"desktop":{"value":{"color":"#F7F7F7"}}},"spacing":{"padding":{"desktop":{"value":{"top":"80px","bottom":"80px"}}}}}}} -->
+  <!-- wp:divi/row {"builderVersion":"4.27.0","modulePreset":"default","module":{"advanced":{"maxWidth":{"desktop":{"value":"1200px"}}}}} -->
+    <!-- wp:divi/column {"builderVersion":"4.27.0","modulePreset":"default","type":{"desktop":{"value":"4_4"}}} -->
+      <!-- wp:divi/text {"builderVersion":"4.27.0","modulePreset":"default","content":{"innerContent":{"desktop":{"value":"<h2>Our Services</h2>"}},"decoration":{"headerFont":{"h2":{"font":{"desktop":{"value":{"family":"Montserrat","weight":"700","color":"#333333","size":"42px"}}}}}}}} --><!-- /wp:divi/text -->
+      <!-- wp:divi/divider {"builderVersion":"4.27.0","modulePreset":"default","module":{"decoration":{"border":{"desktop":{"value":{"color":"#3366CC","weight":"3px"}}}},"advanced":{"maxWidth":{"desktop":{"value":"80px"}},"alignment":{"desktop":{"value":"center"}}}}} --><!-- /wp:divi/divider -->
     <!-- /wp:divi/column -->
   <!-- /wp:divi/row -->
 <!-- /wp:divi/section -->
 ```
 
-**Key structural rules:**
-- Block names use the `divi/` namespace prefix: `wp:divi/section`, `wp:divi/text`, etc.
-- Attributes are stored as a JSON object in the comment
-- Self-closing modules (no inner content) use `/-->` at the end
-- Container elements (sections, rows, columns, groups) have opening and closing comments
-- The JSON `attrs` object holds all module settings
+#### 2.2f Backward Compatibility (Divi 4 Content on Divi 5)
+
+When Divi 5 encounters unmigrated Divi 4 shortcodes, it wraps them in a compatibility block:
+
+```html
+<!-- wp:divi/d4-module -->
+[et_pb_section fb_built="1" _builder_version="4.27.0"]
+  ...legacy shortcode content...
+[/et_pb_section]
+<!-- /wp:divi/d4-module -->
+```
+
+This triggers the legacy Divi 4 framework to load for that page, which has a performance penalty. Migrated pages that only use native Divi 5 blocks get the full performance benefit.
+
+#### 2.2g Format Variations
+
+**IMPORTANT:** Divi 5 JSON payloads may appear in TWO formats depending on context and Divi 5 build version:
+
+1. **Flat attrs format** (earlier Divi 5 builds, backward compat): `{"attrs":{"background_color":"#fff","custom_padding":"20px|..."}}`
+2. **Nested decoration format** (current Divi 5): `{"builderVersion":"...","module":{"decoration":{"background":{"desktop":{"value":{"color":"#fff"}}}}}}`
+
+When reading content, check which format is in use. When writing content, match the format already used on the site. Both are valid — mixing formats on the same site can cause rendering issues.
 
 ### 2.3 Divi 5 Block Name Mapping
 
@@ -841,6 +1201,27 @@ Divi 5 stores content using WordPress block comment delimiters (the same system 
 | `et_pb_post_title` | `divi/post-title` |
 | `et_pb_post_content` | `divi/post-content` |
 | `et_pb_fullwidth_header` | `divi/fullwidth-header` |
+| `et_pb_team_member` | `divi/team-member` |
+| `et_pb_heading` | `divi/heading` |
+| `et_pb_icon` | `divi/icon` |
+| `et_pb_countdown_timer` | `divi/countdown` |
+| `et_pb_number_counter` | `divi/number-counter` |
+| `et_pb_circle_counter` | `divi/circle-counter` |
+| `et_pb_bar_counters` | `divi/counters` |
+| `et_pb_gallery` | `divi/gallery` |
+| `et_pb_video` | `divi/video` |
+| `et_pb_audio` | `divi/audio` |
+| `et_pb_map` | `divi/map` |
+| `et_pb_sidebar` | `divi/sidebar` |
+| `et_pb_portfolio` | `divi/portfolio` |
+| `et_pb_shop` | `divi/shop` |
+| `et_pb_social_media_follow` | `divi/social-media-follow` |
+| `et_pb_search` | `divi/search` |
+| `et_pb_login` | `divi/login` |
+| `et_pb_signup` | `divi/signup` |
+| `et_pb_comments` | `divi/comments` |
+| `et_pb_divider` | `divi/divider` |
+| `et_pb_pricing_tables` | `divi/pricing-tables` |
 | N/A (new in Divi 5) | `divi/group` |
 | N/A (new in Divi 5) | `divi/loop` |
 | N/A (new in Divi 5) | `divi/lottie` |
@@ -3692,6 +4073,426 @@ After completing Divi work, prepare handoff summaries:
 - **For Security Agent**: Report any custom PHP added to functions.php, third-party Divi plugins installed, and code modules containing JavaScript that should be reviewed for XSS risks.
 - **For SEO Agent**: Report new pages/layouts created, heading hierarchy (H1/H2/H3 assignments), images without alt text, and pages where Builder was enabled/disabled.
 - **For Performance Agent**: Report total module counts on complex pages, any new font loads, image sizes, and animation usage.
+
+---
+
+## PART THIRTEEN: BEST PRACTICES & SAFETY RULES
+
+### Before Any Write Operation
+
+1. **Always read current content first.** Never blindly overwrite. Get the existing `post_content` and modify it.
+2. **Detect the format.** Check if the page uses Divi 4 shortcodes or Divi 5 blocks before generating markup.
+3. **Validate nesting.** Every module must be inside a Column, every Column inside a Row, every Row inside a Section.
+4. **Set postmeta.** `_et_pb_use_builder` = `"on"` and `_et_pb_page_layout` must be set or the page won't render.
+5. **Include `_builder_version`.** Every module, row, section, and column needs this.
+6. **Include `fb_built="1"`.** Every section needs this attribute.
+
+### Backup Before Destructive Operations
+
+```bash
+# Store backup in postmeta (recoverable per-page)
+wp eval '
+$id = <ID>;
+$content = get_post_field("post_content", $id);
+update_post_meta($id, "_divi_backup_" . time(), $content);
+echo "Backed up post $id content (" . strlen($content) . " chars)";
+' --path=/path
+
+# Full database backup before bulk operations
+wp db export /tmp/backup-before-divi-changes.sql --path=/path
+```
+
+### Cache Clearing (MANDATORY After Any Content Change)
+
+```bash
+wp eval "if(function_exists('et_core_clear_cache')) et_core_clear_cache();" --path=/path
+wp cache flush --path=/path
+```
+
+Without this, the frontend may show stale CSS/HTML. This is the **single most common issue** after programmatic Divi updates.
+
+### Block Integrity Rules (Divi 5)
+
+1. **JSON must be valid.** Validate before writing.
+2. **Block comments must be on single lines.** No multi-line JSON inside comments.
+3. **HTML in JSON strings must have quotes escaped:** `<p class=\"highlight\">text</p>`
+
+### Common Mistakes
+
+| Mistake | Fix |
+|---------|-----|
+| Missing column `type` | Always include `type="4_4"` (or appropriate fraction) |
+| Regular modules in fullwidth sections | Only `et_pb_fullwidth_*` modules in fullwidth sections |
+| Column types don't add up | `1_2 + 1_3 ≠ 1` — columns must sum to 1 |
+| Forgot `fb_built="1"` on sections | Visual Builder won't recognize the section |
+| Wrong pipe order for spacing | `custom_padding="top|right|bottom|left"` (NOT top|bottom|left|right) |
+| Not clearing cache after changes | Frontend shows stale content until cache regenerated |
+| Using `--post_content=` for complex shortcodes | Use file-based approach: `wp post update <ID> /tmp/content.txt` |
+
+### Performance Considerations
+
+- **Minimize sections:** Each adds DOM weight. Combine related content where possible.
+- **Avoid inline custom CSS:** Use `module_class` and child theme stylesheet instead of `custom_css_main_element`.
+- **Use Global Presets** instead of repeating styling attributes on every module.
+- **Code modules:** Large JS in Code modules impacts performance. Enqueue via child theme instead.
+- **Image optimization:** Prefer WordPress-generated thumbnail sizes over full originals.
+
+### Verification After Changes
+
+```bash
+# Verify page renders correctly (returns 200)
+wp eval '
+$url = get_permalink(<ID>);
+$response = wp_remote_get($url);
+echo wp_remote_retrieve_response_code($response) . " - " . $url;
+' --path=/path
+
+# Verify shortcode structure is valid (matching open/close tags)
+wp eval '
+$content = get_post_field("post_content", <ID>);
+$modules = array("et_pb_section", "et_pb_row", "et_pb_column", "et_pb_text", "et_pb_image", "et_pb_button", "et_pb_blurb");
+foreach($modules as $m) {
+    $open = substr_count($content, "[$m ");
+    $open += substr_count($content, "[$m]");
+    $close = substr_count($content, "[/$m]");
+    if($open !== $close) echo "MISMATCH: $m has $open opens and $close closes\n";
+}
+echo "Validation complete\n";
+' --path=/path
+```
+
+### Rollback Strategy
+
+```bash
+# Restore from postmeta backup
+wp eval '
+$id = <ID>;
+$backups = get_post_meta($id);
+$latest_backup_key = "";
+$latest_time = 0;
+foreach($backups as $key => $val) {
+    if(strpos($key, "_divi_backup_") === 0) {
+        $time = (int)str_replace("_divi_backup_", "", $key);
+        if($time > $latest_time) {
+            $latest_time = $time;
+            $latest_backup_key = $key;
+        }
+    }
+}
+if($latest_backup_key) {
+    $backup_content = get_post_meta($id, $latest_backup_key, true);
+    wp_update_post(array("ID" => $id, "post_content" => $backup_content));
+    echo "Restored from $latest_backup_key\n";
+} else {
+    echo "No backups found\n";
+}
+' --path=/path
+
+# ALWAYS clear cache after restore
+wp eval "et_core_clear_cache();" --path=/path
+wp cache flush --path=/path
+```
+
+---
+
+## PART FOURTEEN: COMMON LAYOUT PATTERNS
+
+Reusable layout patterns for frequent tasks across AnchorCorps sites.
+
+### Hero — Full-width with Background Image
+```
+[et_pb_section fb_built="1" _builder_version="4.27.0" background_image="https://site.com/wp-content/uploads/hero.jpg" background_size="cover" background_position="center" parallax="on" custom_padding="200px||200px|"]
+  [et_pb_row _builder_version="4.27.0"]
+    [et_pb_column type="4_4" _builder_version="4.27.0"]
+      [et_pb_text _builder_version="4.27.0" header_font="Montserrat|700|||||||" header_text_align="center" header_text_color="#FFFFFF" header_font_size="52px" text_text_color="#FFFFFF" text_orientation="center" text_font_size="18px"]
+        <h1>Headline Goes Here</h1>
+        <p>Supporting subheadline text</p>
+      [/et_pb_text]
+      [et_pb_button button_text="Get Started" button_url="/contact" button_alignment="center" _builder_version="4.27.0" custom_button="on" button_text_color="#FFFFFF" button_bg_color="#3366CC" button_border_radius="4px"][/et_pb_button]
+    [/et_pb_column]
+  [/et_pb_row]
+[/et_pb_section]
+```
+
+### Hero — Split (Text Left, Image Right)
+```
+[et_pb_section fb_built="1" _builder_version="4.27.0" custom_padding="100px||100px|"]
+  [et_pb_row column_structure="1_2,1_2" _builder_version="4.27.0" max_width="1200px"]
+    [et_pb_column type="1_2" _builder_version="4.27.0"]
+      [et_pb_text _builder_version="4.27.0" header_font="Montserrat|700|||||||" header_font_size="42px"]
+        <h1>Main Headline</h1>
+        <p>Supporting description paragraph with key value proposition.</p>
+      [/et_pb_text]
+      [et_pb_button button_text="Learn More" button_url="/services" _builder_version="4.27.0" custom_button="on" button_text_color="#FFFFFF" button_bg_color="#3366CC"][/et_pb_button]
+    [/et_pb_column]
+    [et_pb_column type="1_2" _builder_version="4.27.0"]
+      [et_pb_image src="hero-image.jpg" alt="Description" _builder_version="4.27.0" border_radii="on|8px|8px|8px|8px"][/et_pb_image]
+    [/et_pb_column]
+  [/et_pb_row]
+[/et_pb_section]
+```
+
+### 3-Column Icon Blurbs (Services Grid)
+```
+[et_pb_section fb_built="1" _builder_version="4.27.0" background_color="#F8F9FA" custom_padding="80px||80px|"]
+  [et_pb_row _builder_version="4.27.0"]
+    [et_pb_column type="4_4" _builder_version="4.27.0"]
+      [et_pb_text _builder_version="4.27.0" header_2_font="Montserrat|700|||||||" header_2_text_align="center" header_2_font_size="36px"]<h2>Our Services</h2>[/et_pb_text]
+      [et_pb_divider show_divider="on" divider_weight="3px" color="#3366CC" _builder_version="4.27.0" max_width="60px" module_alignment="center"][/et_pb_divider]
+    [/et_pb_column]
+  [/et_pb_row]
+  [et_pb_row column_structure="1_3,1_3,1_3" _builder_version="4.27.0"]
+    [et_pb_column type="1_3" _builder_version="4.27.0"]
+      [et_pb_blurb title="Service One" use_icon="on" font_icon="&#xe090;" icon_color="#3366CC" icon_placement="top" _builder_version="4.27.0" text_orientation="center"]<p>Brief description.</p>[/et_pb_blurb]
+    [/et_pb_column]
+    [et_pb_column type="1_3" _builder_version="4.27.0"]
+      [et_pb_blurb title="Service Two" use_icon="on" font_icon="&#xe0a4;" icon_color="#3366CC" icon_placement="top" _builder_version="4.27.0" text_orientation="center"]<p>Brief description.</p>[/et_pb_blurb]
+    [/et_pb_column]
+    [et_pb_column type="1_3" _builder_version="4.27.0"]
+      [et_pb_blurb title="Service Three" use_icon="on" font_icon="&#xe0b4;" icon_color="#3366CC" icon_placement="top" _builder_version="4.27.0" text_orientation="center"]<p>Brief description.</p>[/et_pb_blurb]
+    [/et_pb_column]
+  [/et_pb_row]
+[/et_pb_section]
+```
+
+### CTA Section with Background Color
+```
+[et_pb_section fb_built="1" _builder_version="4.27.0" background_color="#3366CC" custom_padding="60px||60px|"]
+  [et_pb_row _builder_version="4.27.0"]
+    [et_pb_column type="4_4" _builder_version="4.27.0"]
+      [et_pb_cta title="Ready to Get Started?" button_text="Contact Us" button_url="/contact" _builder_version="4.27.0" use_background_color="off" header_text_color="#FFFFFF" header_font_size="36px" body_text_color="#FFFFFF" custom_button="on" button_text_color="#3366CC" button_bg_color="#FFFFFF" button_border_radius="4px"]<p>Schedule your free consultation today.</p>[/et_pb_cta]
+    [/et_pb_column]
+  [/et_pb_row]
+[/et_pb_section]
+```
+
+### Contact Form with Sidebar Info
+```
+[et_pb_section fb_built="1" _builder_version="4.27.0" custom_padding="80px||80px|"]
+  [et_pb_row column_structure="2_3,1_3" _builder_version="4.27.0"]
+    [et_pb_column type="2_3" _builder_version="4.27.0"]
+      [et_pb_contact_form email="info@example.com" title="Send Us a Message" _builder_version="4.27.0"]
+        [et_pb_contact_field field_id="Name" field_title="Full Name" _builder_version="4.27.0"][/et_pb_contact_field]
+        [et_pb_contact_field field_id="Email" field_title="Email Address" field_type="email" _builder_version="4.27.0"][/et_pb_contact_field]
+        [et_pb_contact_field field_id="Phone" field_title="Phone Number" _builder_version="4.27.0" required_mark="off"][/et_pb_contact_field]
+        [et_pb_contact_field field_id="Message" field_title="Your Message" field_type="text" fullwidth_field="on" _builder_version="4.27.0"][/et_pb_contact_field]
+      [/et_pb_contact_form]
+    [/et_pb_column]
+    [et_pb_column type="1_3" _builder_version="4.27.0"]
+      [et_pb_text _builder_version="4.27.0"]<h3>Contact Information</h3><p><strong>Phone:</strong> (555) 123-4567</p><p><strong>Email:</strong> info@example.com</p><p><strong>Address:</strong><br>123 Main Street<br>City, State 12345</p>[/et_pb_text]
+    [/et_pb_column]
+  [/et_pb_row]
+[/et_pb_section]
+```
+
+### FAQ Accordion
+```
+[et_pb_section fb_built="1" _builder_version="4.27.0" custom_padding="80px||80px|"]
+  [et_pb_row _builder_version="4.27.0" max_width="800px"]
+    [et_pb_column type="4_4" _builder_version="4.27.0"]
+      [et_pb_text _builder_version="4.27.0" header_2_text_align="center" header_2_font_size="36px"]<h2>Frequently Asked Questions</h2>[/et_pb_text]
+      [et_pb_accordion _builder_version="4.27.0"]
+        [et_pb_accordion_item title="What should I expect?" open="on" _builder_version="4.27.0"]<p>Answer text here.</p>[/et_pb_accordion_item]
+        [et_pb_accordion_item title="Do you accept insurance?" _builder_version="4.27.0"]<p>Answer text here.</p>[/et_pb_accordion_item]
+      [/et_pb_accordion]
+    [/et_pb_column]
+  [/et_pb_row]
+[/et_pb_section]
+```
+
+### Team Member Grid (Healthcare)
+```
+[et_pb_section fb_built="1" _builder_version="4.27.0" custom_padding="80px||80px|"]
+  [et_pb_row column_structure="1_3,1_3,1_3" _builder_version="4.27.0"]
+    [et_pb_column type="1_3" _builder_version="4.27.0"]
+      [et_pb_team_member name="Dr. Jane Smith" position="DDS, Lead Dentist" image_url="https://site.com/wp-content/uploads/dr-smith.jpg" _builder_version="4.27.0"]<p>Dr. Smith has over 15 years of experience.</p>[/et_pb_team_member]
+    [/et_pb_column]
+    [et_pb_column type="1_3" _builder_version="4.27.0"]
+      [et_pb_team_member name="Dr. John Doe" position="DMD, Orthodontist" image_url="dr-doe.jpg" _builder_version="4.27.0"]<p>Specializes in orthodontic treatment.</p>[/et_pb_team_member]
+    [/et_pb_column]
+    [et_pb_column type="1_3" _builder_version="4.27.0"]
+      [et_pb_team_member name="Sarah Johnson" position="RDH, Hygienist" image_url="sarah.jpg" _builder_version="4.27.0"]<p>Ensures comfortable cleaning experiences.</p>[/et_pb_team_member]
+    [/et_pb_column]
+  [/et_pb_row]
+[/et_pb_section]
+```
+
+### WP-CLI: Create Complete Landing Page from Scratch
+```bash
+# 1. Create page
+PAGE_ID=$(wp post create --post_type=page --post_title="New Service" --post_status=draft --porcelain --path=/path)
+
+# 2. Build content via file (avoids shell escaping)
+cat > /tmp/landing-page.txt << 'EOF'
+[et_pb_section fb_built="1" _builder_version="4.27.0" background_image="hero.jpg" custom_padding="200px||200px|"][et_pb_row _builder_version="4.27.0"][et_pb_column type="4_4" _builder_version="4.27.0"][et_pb_text _builder_version="4.27.0" header_text_color="#FFFFFF" header_text_align="center" header_font_size="48px" text_text_color="#FFFFFF"]<h1>Service Name</h1><p>Compelling subheadline</p>[/et_pb_text][/et_pb_column][/et_pb_row][/et_pb_section]
+[et_pb_section fb_built="1" _builder_version="4.27.0" custom_padding="80px||80px|"][et_pb_row column_structure="1_2,1_2" _builder_version="4.27.0"][et_pb_column type="1_2" _builder_version="4.27.0"][et_pb_text _builder_version="4.27.0"]<h2>About This Service</h2><p>Description content here.</p>[/et_pb_text][/et_pb_column][et_pb_column type="1_2" _builder_version="4.27.0"][et_pb_image src="service-image.jpg" _builder_version="4.27.0"][/et_pb_image][/et_pb_column][/et_pb_row][/et_pb_section]
+[et_pb_section fb_built="1" _builder_version="4.27.0" background_color="#3366CC" custom_padding="60px||60px|"][et_pb_row _builder_version="4.27.0"][et_pb_column type="4_4" _builder_version="4.27.0"][et_pb_cta title="Schedule Your Appointment" button_text="Book Now" button_url="/contact" _builder_version="4.27.0" use_background_color="off" header_text_color="#FFFFFF" body_text_color="#FFFFFF"]<p>Call us today or book online.</p>[/et_pb_cta][/et_pb_column][/et_pb_row][/et_pb_section]
+EOF
+
+# 3. Set content + meta
+wp post update $PAGE_ID /tmp/landing-page.txt --path=/path
+wp post meta update $PAGE_ID _et_pb_use_builder "on" --path=/path
+wp post meta update $PAGE_ID _et_pb_page_layout "et_full_width_page" --path=/path
+rm /tmp/landing-page.txt
+wp eval "et_core_clear_cache();" --path=/path
+echo "Created landing page: $PAGE_ID"
+```
+
+### WP-CLI: Bulk Find-and-Replace Across All Divi Pages
+```bash
+wp eval '
+$old = "555-OLD-NUMBER";
+$new = "555-NEW-NUMBER";
+$count = 0;
+$posts = get_posts(array(
+    "post_type" => array("page", "post"),
+    "posts_per_page" => -1,
+    "meta_key" => "_et_pb_use_builder",
+    "meta_value" => "on"
+));
+foreach($posts as $post) {
+    if(strpos($post->post_content, $old) !== false) {
+        $content = str_replace($old, $new, $post->post_content);
+        wp_update_post(array("ID" => $post->ID, "post_content" => $content));
+        echo "Updated: " . $post->post_title . " (ID: " . $post->ID . ")\n";
+        $count++;
+    }
+}
+echo "\nUpdated $count pages\n";
+if(function_exists("et_core_clear_cache")) et_core_clear_cache();
+' --path=/path
+```
+
+### WP-CLI: Audit All Pages for a Specific Module Type
+```bash
+wp eval '
+$module = "et_pb_contact_form";
+$posts = get_posts(array(
+    "post_type" => array("page", "post"),
+    "posts_per_page" => -1,
+    "meta_key" => "_et_pb_use_builder",
+    "meta_value" => "on"
+));
+echo "Pages containing [$module]:\n\n";
+foreach($posts as $post) {
+    $count = substr_count($post->post_content, "[$module ");
+    if($count > 0) {
+        echo "  " . $post->post_title . " (ID: " . $post->ID . ") — $count instance(s)\n";
+    }
+}
+' --path=/path
+```
+
+### WP-CLI: Clone a Divi Page (with all meta)
+```bash
+wp eval '
+$source_id = <SOURCE_ID>;
+$source = get_post($source_id);
+$new_id = wp_insert_post(array(
+    "post_type" => $source->post_type,
+    "post_title" => $source->post_title . " (Copy)",
+    "post_content" => $source->post_content,
+    "post_status" => "draft"
+));
+$meta = get_post_meta($source_id);
+foreach($meta as $key => $values) {
+    if(strpos($key, "_et_pb_") === 0) {
+        foreach($values as $v) {
+            update_post_meta($new_id, $key, $v);
+        }
+    }
+}
+echo "Cloned to: $new_id\n";
+' --path=/path
+```
+
+### WP-CLI: Export All Divi Pages Report
+```bash
+wp eval '
+$args = array(
+    "post_type" => array("page", "post"),
+    "posts_per_page" => -1,
+    "meta_key" => "_et_pb_use_builder",
+    "meta_value" => "on"
+);
+$q = new WP_Query($args);
+echo "ID | Title | Type | Layout | Sections\n";
+echo "---|-------|------|--------|--------\n";
+foreach($q->posts as $post) {
+    $layout = get_post_meta($post->ID, "_et_pb_page_layout", true);
+    $sections = substr_count($post->post_content, "[et_pb_section");
+    echo "$post->ID | $post->post_title | $post->post_type | $layout | $sections\n";
+}
+' --path=/path
+```
+
+### WP-CLI: Surgical Module Attribute Update via Regex
+```bash
+# Change a button URL across a page (first match only)
+wp eval '
+$post_id = <ID>;
+$content = get_post_field("post_content", $post_id);
+$content = preg_replace(
+    "/(\[et_pb_button[^\]]*button_url=\")[^\"]*(\"/",
+    "\${1}https://new-url.com\${2}",
+    $content,
+    1  // limit to first match; remove for all
+);
+wp_update_post(array(
+    "ID" => $post_id,
+    "post_content" => $content
+));
+echo "Updated button URL in post $post_id";
+' --path=/path
+```
+
+### WP-CLI: Remove the Nth Section from a Page
+```bash
+wp eval '
+$post_id = <ID>;
+$content = get_post_field("post_content", $post_id);
+preg_match_all("/\[et_pb_section[^\]]*\].*?\[\/et_pb_section\]/s", $content, $matches);
+$section_to_remove = 2;  // 0-indexed
+if (isset($matches[0][$section_to_remove])) {
+    $content = str_replace($matches[0][$section_to_remove], "", $content);
+    wp_update_post(array("ID" => $post_id, "post_content" => $content));
+    echo "Removed section $section_to_remove from post $post_id";
+} else {
+    echo "Section $section_to_remove not found";
+}
+' --path=/path
+```
+
+### WP-CLI: Regenerate Divi Static CSS
+```bash
+wp eval '
+if (function_exists("et_core_clear_cache")) {
+    et_core_clear_cache();
+    echo "Divi cache cleared\n";
+}
+if (function_exists("et_builder_clear_critical_css")) {
+    et_builder_clear_critical_css();
+    echo "Critical CSS cleared\n";
+}
+' --path=/path
+```
+
+### WP-CLI: Update Divi Theme Options
+```bash
+# Update single Divi option
+wp eval "et_update_option('accent_color', '#FF6600');" --path=/path
+
+# Read Divi options
+wp eval "echo et_get_option('accent_color');" --path=/path
+wp eval "echo et_get_option('body_font_size');" --path=/path
+
+# Update multiple at once
+wp eval '
+et_update_option("accent_color", "#FF6600");
+et_update_option("body_font_size", "16");
+et_update_option("primary_nav_font_size", "14");
+' --path=/path
+```
 
 ---
 
